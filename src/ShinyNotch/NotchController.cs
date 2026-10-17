@@ -222,8 +222,10 @@ public sealed class NotchController
     {
         if (this.mode == Mode.Panel)
         {
-            // The panel has the sliders on its Media tab already; just keep them current.
-            this.live?.Tick();
+            // The panel has the sliders on its Media tab already; just keep them current. Only that tab:
+            // ticking whatever is open would also take an extra, off-schedule reading on the Stats tab.
+            if (this.tab == NotchTab.Media)
+                this.live?.Tick();
             return;
         }
 

@@ -64,7 +64,8 @@ Changes from the keys or Control Centre flash in the notch.
 
 ### And
 - **Pin** (⦿) keeps the panel open.
-- **Settings** (⚙ in the panel, or the menu-bar icon) holds the teleprompter script, weather places and units, the HUD toggles, permissions and launch at login.
+- **Open at login**, from the menu-bar menu (a checkmark) or Settings. The first time, macOS usually asks you to approve it in System Settings ▸ General ▸ Login Items; the app says so and opens that page. If you turn it off there later, the app shows that too, rather than a switch that's lying.
+- **Settings** (⚙ in the panel, or the menu-bar icon) holds the teleprompter script, weather places and units, the HUD toggles, permissions and open at login.
 - It's an agent app (`LSUIElement`) with no Dock icon; quit it from the menu-bar icon.
 
 ## Build and run
@@ -100,8 +101,9 @@ rsvg-convert -w 1024 -h 1024 src/ShinyNotch/Resources/AppIcon/appicon.svg -o src
 | [Microsoft.Maui.Controls](https://www.nuget.org/packages/Microsoft.Maui.Controls) | 10.0.100 | The UI framework |
 | [Microsoft.Maui.Platforms.MacOS](https://github.com/dotnet/maui-labs) | 0.1.0-preview.13 | .NET MAUI on native AppKit (`net10.0-macos`), not Mac Catalyst |
 | [Microsoft.Maui.Platforms.MacOS.Essentials](https://github.com/dotnet/maui-labs) | 0.1.0-preview.13 | MAUI Essentials for the AppKit head |
-| [Shiny.Maui.Controls](https://www.nuget.org/packages/Shiny.Maui.Controls) | 1.9.0-beta | `NotchView`, the surface that morphs to fit its content |
-| [Shiny.Maui.Controls.Desktop](https://www.nuget.org/packages/Shiny.Maui.Controls.Desktop) | 1.9.0-beta | `INotchWindowService` (the notch window, hover tracking, camera cut-out size), the menu-bar tray icon, and window-level file drop |
+| [Shiny.Core](https://www.nuget.org/packages/Shiny.Core) | 6.3.0 | `IAppStartupInstaller`: open at login (an `SMAppService` login item), with the approval and turned-off states |
+| [Shiny.Maui.Controls](https://www.nuget.org/packages/Shiny.Maui.Controls) | 1.9.0-beta-0004 | `NotchView`, the surface that morphs to fit its content |
+| [Shiny.Maui.Controls.Desktop](https://www.nuget.org/packages/Shiny.Maui.Controls.Desktop) | 1.9.0-beta-0004 | `INotchWindowService` (the notch window, hover tracking, camera cut-out size), the menu-bar tray icon, and window-level file drop |
 | [Microsoft.Maui.DevFlow.Agent](https://github.com/dotnet/maui-labs) | 0.1.0-preview.13 | Debug builds only: UI inspection and automation |
 
 | Apple framework / service | Used for |
@@ -112,7 +114,6 @@ rsvg-convert -w 1024 -h 1024 src/ShinyNotch/Resources/AppIcon/appicon.svg -o src
 | IOKit, mach `host_statistics`, `sysctl`, `getifaddrs` | GPU utilisation, disk bytes, CPU and memory, network bytes |
 | EventKit | Calendar events |
 | CoreLocation (`CLLocationManager`, `CLGeocoder`) | Where you are for the weather, and its name |
-| ServiceManagement (`SMAppService`) | Launch at login |
 | [Open-Meteo](https://open-meteo.com) | Forecasts and city search: free, no API key |
 
 ## Permissions
@@ -135,5 +136,5 @@ rsvg-convert -w 1024 -h 1024 src/ShinyNotch/Resources/AppIcon/appicon.svg -o src
 
 - Now Playing only sees Apple Music and Spotify (see above).
 - Brightness is the built-in display only; most external monitors don't report it.
-- Launch at login uses `SMAppService` and only works for a signed app in `/Applications`.
+- Open at login registers the app wherever it is when you switch it on. Move it to `/Applications` first, or the login item points at the old location.
 - Files can't be dragged *out* of the tray yet (the AppKit head has no drag source). Use Copy, then paste in Finder.

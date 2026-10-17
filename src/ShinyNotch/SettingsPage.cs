@@ -1,4 +1,4 @@
-using ServiceManagement;
+using Shiny;
 using ShinyNotch.Services;
 
 namespace ShinyNotch;
@@ -14,7 +14,7 @@ public sealed class SettingsPage : ContentPage
     static string searchText = "";
     static IReadOnlyList<WeatherPlace> searchResults = [];
 
-    public SettingsPage(AppSettings settings, CalendarService calendar, WeatherService weather)
+    public SettingsPage(AppSettings settings, CalendarService calendar, WeatherService weather, IAppStartupInstaller startup)
     {
         this.Title = "Shiny Notch";
         this.BackgroundColor = Color.FromArgb("#18181B");
@@ -65,7 +65,7 @@ public sealed class SettingsPage : ContentPage
 
         var weatherSection = this.WeatherSection(settings, weather, Toggle, Note);
 
-        var launchAtLogin = Toggle("Open Shiny Notch when you log in", IsLaunchAtLogin(), SetLaunchAtLogin);
+        var launchAtLogin = LaunchAtLogin(startup, Note);
 
         var quit = new Button { Text = "Quit Shiny Notch", HorizontalOptions = LayoutOptions.Start };
         quit.Clicked += (_, _) => AppKit.NSApplication.SharedApplication.Terminate(null);
@@ -213,21 +213,72 @@ public sealed class SettingsPage : ContentPage
             : calendar.IsDenied ? "Calendar: turned off — allow it in System Settings ▸ Privacy & Security ▸ Calendars"
             : "Calendar: not asked yet";
 
-    static bool IsLaunchAtLogin()
-        => SMAppService.MainApp.Status == SMAppServiceStatus.Enabled;
-
-    static void SetLaunchAtLogin(bool enabled)
+    /// <summary>
+    /// The launch-at-login switch. It shows what macOS actually decided, not what was asked: the first
+    /// registration usually needs approving in System Settings, and the user can turn the login item off
+    /// there at any time. So the state is read fresh each time the page is built, never cached.
+    /// </summary>
+    static View LaunchAtLogin(IAppStartupInstaller startup, Func<string, Label> note)
     {
-        try
+        if (!startup.IsSupported)
+            return note("Opening at login needs macOS 13 or later.");
+
+        var toggle = new Switch { VerticalOptions = LayoutOptions.Center };
+        var status = note("");
+        var openSettings = new Button { Text = "Open Login Items", HorizontalOptions = LayoutOptions.Start, IsVisible = false };
+        openSettings.Clicked += async (_, _) => await startup.OpenSettings();
+
+        var syncing = false;
+        void Show(AppStartupState state)
         {
-            if (enabled)
-                SMAppService.MainApp.Register(out _);
-            else
-                SMAppService.MainApp.Unregister(out _);
+            syncing = true;
+            toggle.IsToggled = state is AppStartupState.Enabled or AppStartupState.RequiresApproval;
+            syncing = false;
+
+            status.Text = state switch
+            {
+                AppStartupState.Enabled => "Shiny Notch opens when you log in.",
+                AppStartupState.RequiresApproval => "Almost: allow Shiny Notch in System Settings ▸ General ▸ Login Items.",
+                AppStartupState.DisabledByUser => "Turned off in System Settings ▸ General ▸ Login Items.",
+                AppStartupState.DisabledByPolicy => "Your organisation's settings don't allow this.",
+                _ => ""
+            };
+            status.IsVisible = status.Text.Length > 0;
+            openSettings.IsVisible = state is AppStartupState.RequiresApproval or AppStartupState.DisabledByUser;
         }
-        catch
+
+        toggle.Toggled += async (_, e) =>
         {
-            // Registration only works for an app in /Applications that is signed; a dev build may refuse.
-        }
+            if (syncing)
+                return;
+
+            try
+            {
+                Show(e.Value ? await startup.Register() : await startup.Unregister());
+            }
+            catch (Exception ex)
+            {
+                status.Text = $"Couldn't change the login item: {ex.Message}";
+                status.IsVisible = true;
+            }
+        };
+
+        _ = Load();
+        async Task Load() => Show(await startup.GetState());
+
+        return new VerticalStackLayout
+        {
+            Spacing = 6,
+            Children =
+            {
+                new HorizontalStackLayout
+                {
+                    Spacing = 10,
+                    Children = { toggle, new Label { Text = "Open Shiny Notch when you log in", TextColor = Colors.White, VerticalOptions = LayoutOptions.Center } }
+                },
+                status,
+                openSettings
+            }
+        };
     }
 }

@@ -16,20 +16,40 @@ public sealed record SystemStats(
     public double MemoryPercent => this.MemoryTotal == 0 ? 0 : 100d * this.MemoryUsed / this.MemoryTotal;
 }
 
-/// <summary>Samples the counters once a second while something is watching, and turns them into rates.</summary>
+/// <summary>
+/// Turns the system counters into rates. It does nothing on its own: no timer, no sampling at startup. The
+/// Stats tab calls <see cref="Begin"/> when it opens and <see cref="Sample"/> once a second while it is on
+/// screen, and nothing else reads the counters, so closing the tab stops the work entirely.
+/// </summary>
 public sealed class SystemStatsService
 {
+    /// <summary>Re-opening the tab within this long carries on, rather than starting the readings over.</summary>
+    static readonly TimeSpan ResumeWindow = TimeSpan.FromSeconds(3);
+
     (ulong Busy, ulong Total) lastCpu;
     (ulong Read, ulong Written) lastDisk;
     (ulong In, ulong Out) lastNet;
     DateTime lastSample;
 
-    public SystemStatsService() => this.Prime();
-
     /// <summary>Recent CPU readings, newest last, for the sparkline.</summary>
     public Queue<double> CpuHistory { get; } = new();
 
-    public SystemStats Current { get; private set; } = new(0, null, 0, 0, 0, 0, 0, 0);
+    /// <summary>The last reading, or null before the first one since <see cref="Begin"/>.</summary>
+    public SystemStats? Current { get; private set; }
+
+    /// <summary>
+    /// The Stats tab opened. Takes a baseline for the rates — unless the tab was showing a moment ago (a
+    /// rebuild, a quick switch away and back), in which case the readings and the sparkline carry on.
+    /// </summary>
+    public void Begin()
+    {
+        if (this.Current != null && DateTime.UtcNow - this.lastSample < ResumeWindow)
+            return;
+
+        this.Current = null;
+        this.CpuHistory.Clear();
+        this.Prime();
+    }
 
     void Prime()
     {

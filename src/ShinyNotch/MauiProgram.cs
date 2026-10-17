@@ -27,6 +27,13 @@ public static class MauiProgram
                 o.MorphDuration = 260;
             });
 
+        // Launch at login, from Shiny.Core: an SMAppService login item for the running app bundle.
+        builder.Services.AddAppStartupInstaller(o =>
+        {
+            o.Identifier = "net.shiny.notch";
+            o.DisplayName = "Shiny Notch";
+        });
+
         builder.Services.AddSingleton<AppSettings>();
         builder.Services.AddSingleton(sp => sp.GetRequiredService<IDispatcherProvider>().GetForCurrentThread()!);
         builder.Services.AddSingleton<NowPlayingService>();

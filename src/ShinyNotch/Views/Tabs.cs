@@ -227,12 +227,19 @@ sealed class StatsTab : VerticalStackLayout, ILiveView
         this.disk = Row("Disk", Ui.Warm);
         this.net = Row("Network", Color.FromArgb("#F472B6"));
 
-        this.Tick();
+        // No sample here: Begin takes the baseline, and the first rates need a second of counters after it.
+        stats.Begin();
+        if (stats.Current is { } resumed)
+            this.Show(resumed);
+        else
+            this.cpu.Text = "measuring…";
     }
 
-    public void Tick()
+    /// <summary>Once a second, and only while this tab is the one on screen.</summary>
+    public void Tick() => this.Show(this.stats.Sample());
+
+    void Show(SystemStats s)
     {
-        var s = this.stats.Sample();
         this.cpu.Text = $"{Ui.Meter(s.CpuPercent / 100)}  {s.CpuPercent:0}%";
         this.cpuSpark.Text = Ui.Sparkline(this.stats.CpuHistory);
         this.gpu.Text = s.GpuPercent is { } g ? $"{Ui.Meter(g / 100)}  {g:0}%" : "not reported";

@@ -93,12 +93,39 @@ public sealed class App : Application
         else
             this.tray.Title = "◖◗";
 
-        this.tray.SetMenu(new TrayMenuBuilder()
-            .Item("Settings…", this.ShowSettings)
+        this.tray.IsVisible = true;
+        _ = this.RefreshTrayMenuAsync();
+    }
+
+    /// <summary>
+    /// The tray menu, with "Open at Login" ticked from the login item's real state. Rebuilt after every
+    /// toggle, because macOS may answer "needs approval" rather than doing what was asked.
+    /// </summary>
+    async Task RefreshTrayMenuAsync()
+    {
+        if (this.tray == null)
+            return;
+
+        var startup = this.services.GetRequiredService<Shiny.IAppStartupInstaller>();
+        var menu = new TrayMenuBuilder().Item("Settings…", this.ShowSettings);
+
+        if (startup.IsSupported)
+        {
+            var state = await startup.GetState();
+            var on = state is Shiny.AppStartupState.Enabled or Shiny.AppStartupState.RequiresApproval;
+            menu.Check("Open at Login", on, async enable =>
+            {
+                var result = enable ? await startup.Register() : await startup.Unregister();
+                if (result is Shiny.AppStartupState.RequiresApproval or Shiny.AppStartupState.DisabledByUser)
+                    await startup.OpenSettings();
+                await this.RefreshTrayMenuAsync();
+            });
+        }
+
+        this.tray.SetMenu(menu
             .Separator()
             .Item("Quit Shiny Notch", () => NSApplication.SharedApplication.Terminate(null))
             .Build());
-        this.tray.IsVisible = true;
     }
 
     /// <summary>An SF Symbol rendered to a PNG, so the app ships no image assets.</summary>
