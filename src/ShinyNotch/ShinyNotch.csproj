@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0-macos</TargetFramework>
+        <OutputType>Exe</OutputType>
+        <UseMaui>true</UseMaui>
+        <SingleProject>true</SingleProject>
+        <IsPackable>false</IsPackable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <RootNamespace>ShinyNotch</RootNamespace>
+
+        <!-- No space: the bundle is named from this, and a space in the .app name kept the platform's MauiMenuBar.bundle out of it (startup crash). The menu-bar name comes from CFBundleDisplayName. -->
+        <ApplicationTitle>ShinyNotch</ApplicationTitle>
+        <ApplicationId>net.shiny.notch</ApplicationId>
+        <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+        <ApplicationVersion>1</ApplicationVersion>
+        <SupportedOSPlatformVersion>14.0</SupportedOSPlatformVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.100" />
+        <PackageReference Include="Microsoft.Maui.Platforms.MacOS" Version="0.1.0-preview.13.26514.2" />
+        <PackageReference Include="Microsoft.Maui.Platforms.MacOS.Essentials" Version="0.1.0-preview.13.26514.2" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+        <PackageReference Include="Microsoft.Maui.DevFlow.Agent" Version="0.1.0-preview.13.26514.2" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(UseLocalShinyControls)' != 'true'">
+        <PackageReference Include="Shiny.Maui.Controls" Version="$(ShinyControlsVersion)" />
+        <PackageReference Include="Shiny.Maui.Controls.Desktop" Version="$(ShinyControlsVersion)" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(UseLocalShinyControls)' == 'true'">
+        <ProjectReference Include="$(ShinyControlsPath)/src/Shiny.Maui.Controls/Shiny.Maui.Controls.csproj" />
+        <ProjectReference Include="$(ShinyControlsPath)/src/Shiny.Maui.Controls.Desktop/Shiny.Maui.Controls.Desktop.csproj" />
+    </ItemGroup>
+</Project>

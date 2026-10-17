@@ -1,0 +1,16 @@
+<Project>
+    <PropertyGroup>
+        <LangVersion>latest</LangVersion>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+
+        <!--
+            Shiny controls come from NuGet (the 1.9 betas carry NotchView and the camera-notch window).
+            To build against a local checkout of the controls repo instead - to change the control and the
+            app together - pass -p:UseLocalShinyControls=true. ShinyControlsPath points at that checkout.
+        -->
+        <ShinyControlsVersion>1.9.0-beta-*</ShinyControlsVersion>
+        <UseLocalShinyControls Condition="'$(UseLocalShinyControls)' == ''">false</UseLocalShinyControls>
+        <ShinyControlsPath Condition="'$(ShinyControlsPath)' == ''">$(MSBuildThisFileDirectory)../controls</ShinyControlsPath>
+    </PropertyGroup>
+</Project>
