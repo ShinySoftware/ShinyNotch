@@ -145,7 +145,7 @@ public sealed class NotchController
 
         this.media.Start();
         this.controls.Start();
-        this.calendar.Refresh();
+        _ = this.calendar.RefreshAsync();
         _ = this.weather.RefreshAsync();
 
         this.ticker = this.dispatcher.CreateTimer();
@@ -358,7 +358,7 @@ public sealed class NotchController
     {
         // Calendar entries and "in 5m" peeks move on their own.
         if (DateTime.Now.Second == 0)
-            this.calendar.Refresh();
+            _ = this.calendar.RefreshAsync();
 
         // The forecast refreshes itself when stale (20 minutes); asking every five is cheap.
         if (DateTime.Now.Second == 30 && DateTime.Now.Minute % 5 == 0)

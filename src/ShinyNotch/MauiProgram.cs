@@ -39,6 +39,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<NowPlayingService>();
         builder.Services.AddSingleton<SystemControlsService>();
         builder.Services.AddSingleton<SystemStatsService>();
+        builder.Services.AddCalendarStore();
         builder.Services.AddSingleton<CalendarService>();
         builder.Services.AddSingleton<CountdownService>();
         builder.Services.AddSingleton<FileTrayService>();
