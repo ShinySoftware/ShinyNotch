@@ -5,20 +5,22 @@ namespace ShinyNotch.Views;
 
 /// <summary>
 /// The collapsed notch: a "wing" either side of the camera, at the camera's height. Left is what's
-/// playing; right is the countdown, then a meeting that's about to start.
+/// playing; right is the countdown, then a meeting that's about to start, then the temperature.
 /// </summary>
 sealed class PeekView : Grid, ILiveView
 {
     readonly CountdownService countdown;
     readonly CalendarService calendar;
+    readonly WeatherService weather;
     readonly Label? right;
 
     public const double WingWidth = 64;
 
-    PeekView(double cutoutWidth, double height, View? left, Label? right, CountdownService countdown, CalendarService calendar)
+    PeekView(double cutoutWidth, double height, View? left, Label? right, CountdownService countdown, CalendarService calendar, WeatherService weather)
     {
         this.countdown = countdown;
         this.calendar = calendar;
+        this.weather = weather;
         this.right = right;
 
         this.HeightRequest = height;
@@ -36,7 +38,7 @@ sealed class PeekView : Grid, ILiveView
     }
 
     /// <summary>Null when there is nothing worth peeking at, so the notch can disappear into the camera.</summary>
-    public static PeekView? Create(double cutoutWidth, double height, NowPlayingService media, CountdownService countdown, CalendarService calendar)
+    public static PeekView? Create(double cutoutWidth, double height, NowPlayingService media, CountdownService countdown, CalendarService calendar, WeatherService weather)
     {
         View? left = null;
         if (media.Current is { } now)
@@ -61,7 +63,7 @@ sealed class PeekView : Grid, ILiveView
             };
         }
 
-        var rightText = RightText(countdown, calendar);
+        var rightText = RightText(countdown, calendar, weather);
         Label? right = null;
         if (rightText != null)
         {
@@ -72,10 +74,10 @@ sealed class PeekView : Grid, ILiveView
 
         return left == null && right == null
             ? null
-            : new PeekView(cutoutWidth, height, left, right, countdown, calendar);
+            : new PeekView(cutoutWidth, height, left, right, countdown, calendar, weather);
     }
 
-    static (string Text, Color Color)? RightText(CountdownService countdown, CalendarService calendar)
+    static (string Text, Color Color)? RightText(CountdownService countdown, CalendarService calendar, WeatherService weather)
     {
         if (countdown.IsActive)
             return (CountdownService.Format(countdown.Remaining), countdown.IsPaused ? Ui.Dim : Ui.Warm);
@@ -83,12 +85,16 @@ sealed class PeekView : Grid, ILiveView
         if (calendar.StartingWithin(TimeSpan.FromMinutes(15)) is { } next)
             return ($"in {Math.Max(1, (int)Math.Ceiling((next.Start - DateTime.Now).TotalMinutes))}m", next.Color);
 
+        // Nothing more urgent: the temperature where you are, the way the iPhone's island idles.
+        if (weather.Selected is { } report)
+            return ($"{WeatherService.Symbol(report.Code, report.IsDay)} {WeatherService.Degrees(report.Temperature)}", Ui.Text);
+
         return null;
     }
 
     public void Tick()
     {
-        if (this.right != null && RightText(this.countdown, this.calendar) is { } text)
+        if (this.right != null && RightText(this.countdown, this.calendar, this.weather) is { } text)
             this.right.Text = text.Text;
     }
 }

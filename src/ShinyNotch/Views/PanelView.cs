@@ -3,6 +3,7 @@ namespace ShinyNotch.Views;
 public enum NotchTab
 {
     Media,
+    Weather,
     Tray,
     Stats,
     Calendar,
@@ -11,7 +12,7 @@ public enum NotchTab
 }
 
 /// <summary>
-/// The expanded notch. The tab strip sits in the band beside the camera (three tabs either side of it),
+/// The expanded notch. The tab strip sits in the band beside the camera (four tabs either side of it, counting pin and settings),
 /// and the selected tab's body hangs below.
 /// </summary>
 sealed class PanelView : Grid, ILiveView
@@ -19,6 +20,7 @@ sealed class PanelView : Grid, ILiveView
     static readonly (NotchTab Tab, string Glyph, string Name)[] Tabs =
     [
         (NotchTab.Media, "♫", "Now Playing"),
+        (NotchTab.Weather, "☀︎", "Weather"),
         (NotchTab.Tray, "⇩", "File Tray"),
         (NotchTab.Stats, "◔", "System"),
         (NotchTab.Calendar, "▦", "Calendar"),
@@ -43,19 +45,20 @@ sealed class PanelView : Grid, ILiveView
 
         HorizontalStackLayout Strip(IEnumerable<(NotchTab Tab, string Glyph, string Name)> tabs, LayoutOptions align)
         {
-            var strip = new HorizontalStackLayout { Spacing = 2, HorizontalOptions = align, VerticalOptions = LayoutOptions.Center };
+            // No spacing: four glyphs a side have to fit between the panel edge and the camera.
+            var strip = new HorizontalStackLayout { Spacing = 0, HorizontalOptions = align, VerticalOptions = LayoutOptions.Center };
             foreach (var t in tabs)
             {
                 var tab = t.Tab;
-                strip.Children.Add(Ui.Glyph(t.Glyph, () => select(tab), 16, tab == selected ? Ui.Accent : Ui.Faint, t.Name));
+                strip.Children.Add(Ui.Glyph(t.Glyph, () => select(tab), 15, tab == selected ? Ui.Accent : Ui.Faint, t.Name));
             }
             return strip;
         }
 
-        var left = Strip(Tabs.Take(3), LayoutOptions.Start);
-        var right = Strip(Tabs.Skip(3), LayoutOptions.End);
-        right.Children.Add(Ui.Glyph("⦿", togglePin, 13, pinned ? Ui.Warm : Ui.Faint, pinned ? "Unpin" : "Keep open"));
-        right.Children.Add(Ui.Glyph("⚙︎", openSettings, 15, Ui.Faint, "Settings"));
+        var left = Strip(Tabs.Take(4), LayoutOptions.Start);
+        var right = Strip(Tabs.Skip(4), LayoutOptions.End);
+        right.Children.Add(Ui.Glyph("⦿", togglePin, 12, pinned ? Ui.Warm : Ui.Faint, pinned ? "Unpin" : "Keep open"));
+        right.Children.Add(Ui.Glyph("⚙︎", openSettings, 14, Ui.Faint, "Settings"));
 
         this.Children.Add(left.At(row: 0, column: 0));
         this.Children.Add(right.At(row: 0, column: 2));

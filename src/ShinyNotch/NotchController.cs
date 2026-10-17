@@ -45,6 +45,7 @@ public sealed class NotchController
     readonly CountdownService countdown;
     readonly FileTrayService tray;
     readonly TeleprompterService prompter;
+    readonly WeatherService weather;
     readonly IDispatcher dispatcher;
 
     Mode mode = Mode.Peek;
@@ -69,6 +70,7 @@ public sealed class NotchController
         CountdownService countdown,
         FileTrayService tray,
         TeleprompterService prompter,
+        WeatherService weather,
         IDispatcher dispatcher)
     {
         this.notch = notch;
@@ -81,6 +83,7 @@ public sealed class NotchController
         this.countdown = countdown;
         this.tray = tray;
         this.prompter = prompter;
+        this.weather = weather;
         this.dispatcher = dispatcher;
         this.tab = Enum.TryParse<NotchTab>(settings.LastTab, out var t) ? t : NotchTab.Media;
     }
@@ -137,11 +140,13 @@ public sealed class NotchController
                 prompterTab.Scroll();
         };
         this.controls.ChangedExternally += (_, kind) => this.ShowHud(kind);
+        this.weather.Changed += (_, _) => this.Rebuild(NotchTab.Weather);
         this.settings.Changed += (_, _) => this.Rebuild(NotchTab.Prompter);
 
         this.media.Start();
         this.controls.Start();
         this.calendar.Refresh();
+        _ = this.weather.RefreshAsync();
 
         this.ticker = this.dispatcher.CreateTimer();
         this.ticker.Interval = TimeSpan.FromSeconds(1);
@@ -208,6 +213,8 @@ public sealed class NotchController
     {
         this.tab = tab;
         this.settings.LastTab = tab.ToString();
+        if (tab == NotchTab.Weather)
+            _ = this.weather.RefreshAsync();
         this.Show(Mode.Panel);
     }
 
@@ -264,7 +271,7 @@ public sealed class NotchController
 
     string Key() => this.mode switch
     {
-        Mode.Peek => $"peek|{this.media.Current?.TrackKey}|{this.media.Current?.IsPlaying}|{this.media.Artwork?.Length}|{this.countdown.IsActive}|{this.countdown.IsPaused}|{this.calendar.StartingWithin(TimeSpan.FromMinutes(15))?.Title}",
+        Mode.Peek => $"peek|{this.media.Current?.TrackKey}|{this.media.Current?.IsPlaying}|{this.media.Artwork?.Length}|{this.countdown.IsActive}|{this.countdown.IsPaused}|{this.calendar.StartingWithin(TimeSpan.FromMinutes(15))?.Title}|{this.weather.Selected?.Temperature:0}|{this.weather.Selected?.Code}",
         Mode.Hud => "hud",
         // Panels are rebuilt on every structural change, and those are rare.
         _ => $"panel|{this.tab}|{Guid.NewGuid()}"
@@ -303,7 +310,7 @@ public sealed class NotchController
     PeekView? BuildPeek()
     {
         var cutout = this.notch.HardwareNotchSize;
-        return PeekView.Create(cutout.Width, Math.Max(cutout.Height, 32), this.media, this.countdown, this.calendar);
+        return PeekView.Create(cutout.Width, Math.Max(cutout.Height, 32), this.media, this.countdown, this.calendar, this.weather);
     }
 
     PanelView BuildPanel()
@@ -311,6 +318,7 @@ public sealed class NotchController
         View body = this.tab switch
         {
             NotchTab.Media => new MediaTab(this.media, this.controls),
+            NotchTab.Weather => new WeatherTab(this.weather, () => this.OpenSettings?.Invoke()),
             NotchTab.Tray => this.BuildTray(),
             NotchTab.Stats => new StatsTab(this.stats),
             NotchTab.Calendar => new CalendarTab(this.calendar, () => _ = this.RenderAsync()),
@@ -349,6 +357,10 @@ public sealed class NotchController
         // Calendar entries and "in 5m" peeks move on their own.
         if (DateTime.Now.Second == 0)
             this.calendar.Refresh();
+
+        // The forecast refreshes itself when stale (20 minutes); asking every five is cheap.
+        if (DateTime.Now.Second == 30 && DateTime.Now.Minute % 5 == 0)
+            _ = this.weather.RefreshAsync();
 
         this.live?.Tick();
 

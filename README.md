@@ -1,19 +1,71 @@
+<p align="center">
+  <img src="docs/screenshots/icon.png" width="128" alt="Shiny Notch icon" />
+</p>
+
 # Shiny Notch
 
 A menu-bar app for macOS that turns the MacBook camera notch into a live panel. It's built with .NET MAUI on the AppKit head ([maui-labs](https://github.com/dotnet/maui-labs)) and Shiny Controls' `NotchView` / `INotchWindowService`.
 
-- **Peek.** While collapsed, the notch shows what's playing (artwork) to the left of the camera, and a running timer or a meeting in the next 15 minutes to the right. With nothing to show, it disappears into the camera housing.
-- **Hover to expand** into a panel. Its tabs sit either side of the camera:
-  - **Now Playing**: artwork, title, position, previous/play/next for Apple Music and Spotify, plus volume and display brightness sliders.
-  - **File Tray**: drop files onto the notch to shelve them. Copy them back out (⌘V in Finder pastes them), AirDrop, reveal or open them, or clear the tray. Files that move or are deleted drop off automatically.
-  - **System**: CPU with a sparkline, GPU, memory, disk read/write and network up/down, once a second.
-  - **Calendar**: the rest of today and tomorrow, from every calendar.
-  - **Timer**: 1–45 minute presets, +1m, pause and cancel. It chimes and opens the notch when it ends.
-  - **Teleprompter**: your script scrolls right under the camera, with play/pause, nudge, speed and text size. The notch stays open while it runs.
-- **HUD**: volume and brightness changes flash in the notch.
-- **Pin** (⦿) keeps the panel open. **Settings** (⚙ or the menu-bar icon) holds the teleprompter script, the HUD toggles, permissions and launch at login.
+Hover the notch to open it, and move away to let it fold back into the camera. Apple silicon only.
 
-No Dock icon: it's an `LSUIElement` agent, so quit it from the menu-bar icon.
+<p align="center">
+  <img src="docs/screenshots/peek.png" width="372" alt="The collapsed notch: album art left of the camera, the temperature right of it" />
+</p>
+
+## Features
+
+### Peek
+
+While collapsed, the notch shows a "wing" either side of the camera:
+- **Left:** what's playing.
+- **Right:** a running timer, a meeting starting in the next 15 minutes, or the temperature where you are, in that order.
+
+With nothing to show, the notch disappears into the camera housing.
+
+### Now Playing
+Artwork, title, position and previous/play/next for Apple Music and Spotify, with volume and display brightness sliders.
+
+<img src="docs/screenshots/media.png" width="528" alt="Now Playing tab" />
+
+### Weather
+Like the iOS widget: the conditions now, the next twelve hours, and the week. Each day's low-to-high bar sits on the week's range, and today's bar has a dot at the current temperature. It works from where you are, or any cities you add in Settings; switch between them with ‹ ›. Temperatures are °C or °F, automatic by region: change it in Settings, or tap the temperature to flip it.
+
+<img src="docs/screenshots/weather.png" width="528" alt="Weather tab with hourly and 7-day forecast" />
+
+### File Tray
+Drop files onto the notch to shelve them. Copy them back out (⌘V in Finder pastes them), AirDrop them, reveal or open them, or clear the tray. Files that move or are deleted drop off on their own.
+
+<img src="docs/screenshots/tray.png" width="528" alt="File Tray tab" />
+
+### System
+CPU with a sparkline, GPU, memory, disk read/write and network up/down, updated once a second.
+
+<img src="docs/screenshots/stats.png" width="528" alt="System stats tab" />
+
+### Calendar
+The rest of today and tomorrow, from every calendar you have.
+
+<img src="docs/screenshots/calendar.png" width="528" alt="Calendar tab" />
+
+### Timer
+Presets from 1 to 45 minutes, plus +1m, pause and cancel. The countdown shows in the peek, and the notch chimes and opens when it ends.
+
+<img src="docs/screenshots/timer.png" width="528" alt="Timer tab" />
+
+### Teleprompter
+Your script scrolls right under the camera, so you read while looking at the lens. There's play/pause, nudge, speed and text size, and the notch stays open while it runs. Edit the script in Settings.
+
+<img src="docs/screenshots/teleprompter.png" width="528" alt="Teleprompter tab" />
+
+### Volume and brightness HUD
+Changes from the keys or Control Centre flash in the notch.
+
+<img src="docs/screenshots/hud.png" width="450" alt="Volume HUD in the notch" />
+
+### And
+- **Pin** (⦿) keeps the panel open.
+- **Settings** (⚙ in the panel, or the menu-bar icon) holds the teleprompter script, weather places and units, the HUD toggles, permissions and launch at login.
+- It's an agent app (`LSUIElement`) with no Dock icon; quit it from the menu-bar icon.
 
 ## Build and run
 
@@ -22,32 +74,61 @@ dotnet build
 open src/ShinyNotch/bin/Debug/net10.0-macos/osx-arm64/ShinyNotch.app
 ```
 
-Shiny Controls comes from NuGet (`1.9.0-beta-*`). To build against a local checkout of the controls repo at `../controls` instead, so you can change the notch control and the app together:
+For a release build:
 
 ```bash
-dotnet build -p:UseLocalShinyControls=true
+dotnet build -c Release
+open src/ShinyNotch/bin/Release/net10.0-macos/osx-arm64/ShinyNotch.app
 ```
 
-Debug builds accept `--open <Media|Tray|Stats|Calendar|Timer|Prompter>` to start with the panel pinned open on a tab, which makes the UI drivable without a mouse:
+Debug builds accept `--open <Media|Weather|Tray|Stats|Calendar|Timer|Prompter>` to start with the panel pinned open on a tab, which makes the UI drivable without a mouse:
 
 ```bash
-src/ShinyNotch/bin/Debug/net10.0-macos/osx-arm64/ShinyNotch.app/Contents/MacOS/ShinyNotch --open Stats
+src/ShinyNotch/bin/Debug/net10.0-macos/osx-arm64/ShinyNotch.app/Contents/MacOS/ShinyNotch --open Weather
 ```
+
+The icon's source is `src/ShinyNotch/Resources/AppIcon/appicon.svg`. After editing it, re-render the PNG the build uses:
+
+```bash
+rsvg-convert -w 1024 -h 1024 src/ShinyNotch/Resources/AppIcon/appicon.svg -o src/ShinyNotch/Resources/AppIcon/appicon.png
+```
+
+## Libraries
+
+| Package | Version | Used for |
+|---|---|---|
+| [Microsoft.Maui.Controls](https://www.nuget.org/packages/Microsoft.Maui.Controls) | 10.0.100 | The UI framework |
+| [Microsoft.Maui.Platforms.MacOS](https://github.com/dotnet/maui-labs) | 0.1.0-preview.13 | .NET MAUI on native AppKit (`net10.0-macos`), not Mac Catalyst |
+| [Microsoft.Maui.Platforms.MacOS.Essentials](https://github.com/dotnet/maui-labs) | 0.1.0-preview.13 | MAUI Essentials for the AppKit head |
+| [Shiny.Maui.Controls](https://www.nuget.org/packages/Shiny.Maui.Controls) | 1.9.0-beta | `NotchView`, the surface that morphs to fit its content |
+| [Shiny.Maui.Controls.Desktop](https://www.nuget.org/packages/Shiny.Maui.Controls.Desktop) | 1.9.0-beta | `INotchWindowService` (the notch window, hover tracking, camera cut-out size), the menu-bar tray icon, and window-level file drop |
+| [Microsoft.Maui.DevFlow.Agent](https://github.com/dotnet/maui-labs) | 0.1.0-preview.13 | Debug builds only: UI inspection and automation |
+
+| Apple framework / service | Used for |
+|---|---|
+| AppKit (`NSAppleScript`, `NSWorkspace`, `NSPasteboard`, `NSSharingService`) | Now Playing in Music and Spotify; the file tray's copy, reveal, open and AirDrop |
+| CoreAudio / AudioToolbox | Output volume and mute |
+| DisplayServices (private) | Built-in display brightness; there is no public API on Apple silicon |
+| IOKit, mach `host_statistics`, `sysctl`, `getifaddrs` | GPU utilisation, disk bytes, CPU and memory, network bytes |
+| EventKit | Calendar events |
+| CoreLocation (`CLLocationManager`, `CLGeocoder`) | Where you are for the weather, and its name |
+| ServiceManagement (`SMAppService`) | Launch at login |
+| [Open-Meteo](https://open-meteo.com) | Forecasts and city search: free, no API key |
 
 ## Permissions
 
 | Feature | Asks for | Notes |
 |---|---|---|
 | Now Playing | Automation (Music, Spotify) | Asked once per player, the first time it's running. A player that isn't running is never contacted, because asking it would launch it. |
+| Weather | Location | Only when "Show the weather where I am" is on. Cities you add need nothing. |
 | Calendar | Calendars, full access | From the Calendar tab or Settings. |
-| Volume, brightness, stats, file tray, timer, teleprompter | nothing | |
+| Everything else | nothing | |
 
 ## How it works
 
-- `NotchController` runs the notch in one of three modes (peek, panel, HUD). It rebuilds the content when its structure changes and updates text in place otherwise. The AppKit head never creates native views for children added to an on-screen layout, so a content swap is a fresh page.
-- **Now Playing** uses AppleScript (`NSAppleScript`), not MediaRemote. Since macOS 15.4 the system-wide now-playing API returns nothing to apps without an Apple entitlement, so only Music and Spotify are seen.
-- **Volume** uses CoreAudio's virtual main volume on the default output device. **Brightness** uses the private `DisplayServices` framework, the same call Control Centre uses; there is no public API on Apple silicon.
-- **Stats** come from mach `host_statistics`, `sysctl hw.memsize`, IOKit (`IOAccelerator` for GPU utilisation, `IOBlockStorageDriver` for disk bytes) and `getifaddrs` for network bytes.
+- `NotchController` runs the notch in one of three modes (peek, panel, HUD). It rebuilds the content when its structure changes and updates text in place otherwise. The AppKit head never creates native views for children added to an on-screen layout, so a content swap is a fresh page, and so is a change to the Settings page's lists.
+- **Now Playing** uses AppleScript, not MediaRemote. Since macOS 15.4 the system-wide now-playing API returns nothing to apps without an Apple entitlement, so only Music and Spotify are seen.
+- **Weather** comes from Open-Meteo, which converts units server-side, so switching °C/°F refetches. Forecasts are cached for 20 minutes per place.
 - **Text entry** lives in Settings, an ordinary window. The notch window is borderless and can never take keyboard focus.
 
 ## Known limits

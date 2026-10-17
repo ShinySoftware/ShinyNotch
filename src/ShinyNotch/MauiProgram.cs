@@ -23,7 +23,7 @@ public static class MauiProgram
             .UseDesktopNotch(o =>
             {
                 o.MaxWidth = 560;
-                o.MaxHeight = 420;
+                o.MaxHeight = 640;
                 o.MorphDuration = 260;
             });
 
@@ -36,6 +36,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<CountdownService>();
         builder.Services.AddSingleton<FileTrayService>();
         builder.Services.AddSingleton<TeleprompterService>();
+        builder.Services.AddSingleton<WeatherService>();
         builder.Services.AddSingleton<NotchController>();
         builder.Services.AddTransient<SettingsPage>();
 

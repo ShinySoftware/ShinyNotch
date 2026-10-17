@@ -14,6 +14,10 @@
         <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
         <ApplicationVersion>1</ApplicationVersion>
         <SupportedOSPlatformVersion>14.0</SupportedOSPlatformVersion>
+        <!-- Apple silicon only: the camera notch only exists on Apple silicon MacBooks. One RID also keeps
+             Release from building a universal app (whose per-RID osx-arm64 folder is an unsigned,
+             incomplete intermediate - the real app would be one level up). -->
+        <RuntimeIdentifier>osx-arm64</RuntimeIdentifier>
     </PropertyGroup>
 
     <ItemGroup>
@@ -22,17 +26,19 @@
         <PackageReference Include="Microsoft.Maui.Platforms.MacOS.Essentials" Version="0.1.0-preview.13.26514.2" />
     </ItemGroup>
 
+    <ItemGroup>
+        <!-- appicon.svg is the source; the PNG is rendered from it (rsvg-convert -w 1024 -h 1024) because
+             the platform's icon step resizes with sips, which does not read SVG. -->
+        <MauiIcon Include="Resources/AppIcon/appicon.png" />
+        <None Include="Resources/AppIcon/appicon.svg" />
+    </ItemGroup>
+
     <ItemGroup Condition="'$(Configuration)' == 'Debug'">
         <PackageReference Include="Microsoft.Maui.DevFlow.Agent" Version="0.1.0-preview.13.26514.2" />
     </ItemGroup>
 
-    <ItemGroup Condition="'$(UseLocalShinyControls)' != 'true'">
-        <PackageReference Include="Shiny.Maui.Controls" Version="$(ShinyControlsVersion)" />
-        <PackageReference Include="Shiny.Maui.Controls.Desktop" Version="$(ShinyControlsVersion)" />
-    </ItemGroup>
-
-    <ItemGroup Condition="'$(UseLocalShinyControls)' == 'true'">
-        <ProjectReference Include="$(ShinyControlsPath)/src/Shiny.Maui.Controls/Shiny.Maui.Controls.csproj" />
-        <ProjectReference Include="$(ShinyControlsPath)/src/Shiny.Maui.Controls.Desktop/Shiny.Maui.Controls.Desktop.csproj" />
+    <ItemGroup>
+        <PackageReference Include="Shiny.Maui.Controls" Version="1.9.0-beta-*" />
+        <PackageReference Include="Shiny.Maui.Controls.Desktop" Version="1.9.0-beta-*" />
     </ItemGroup>
 </Project>

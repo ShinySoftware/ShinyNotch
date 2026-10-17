@@ -29,6 +29,8 @@ static class Ui
             FontAttributes = bold ? FontAttributes.Bold : FontAttributes.None,
             TextColor = color ?? Text,
             WidthRequest = width,
+            // A fixed-width label in a wider cell would otherwise be centred in it, out of line with its neighbours.
+            HorizontalOptions = width > 0 ? LayoutOptions.Start : LayoutOptions.Fill,
             VerticalTextAlignment = TextAlignment.Center,
             LineBreakMode = LineBreakMode.TailTruncation,
             MaxLines = 1

@@ -13,6 +13,10 @@
     <true/>
     <key>NSAppleEventsUsageDescription</key>
     <string>Shiny Notch reads what Music and Spotify are playing and controls playback from the notch.</string>
+    <key>NSLocationUsageDescription</key>
+    <string>Shiny Notch shows the weather where you are.</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Shiny Notch shows the weather where you are.</string>
     <key>NSCalendarsFullAccessUsageDescription</key>
     <string>Shiny Notch shows your upcoming events in the notch.</string>
     <key>NSCalendarsUsageDescription</key>

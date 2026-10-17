@@ -54,6 +54,40 @@ public sealed class AppSettings
         set => this.Set(nameof(this.TrayFiles), NSArray.FromStrings(value.ToArray()), notify: false);
     }
 
+    /// <summary>"auto" (the region's units), "c" or "f".</summary>
+    public string TemperatureUnit
+    {
+        get => Defaults.StringForKey(nameof(this.TemperatureUnit)) ?? "auto";
+        set => this.Set(nameof(this.TemperatureUnit), new NSString(value));
+    }
+
+    public bool WeatherUseCurrentLocation
+    {
+        get => this.Bool(nameof(this.WeatherUseCurrentLocation), true);
+        set => this.Set(nameof(this.WeatherUseCurrentLocation), NSNumber.FromBoolean(value));
+    }
+
+    /// <summary>Places added in Settings. Stored as "name|latitude|longitude" strings.</summary>
+    public IReadOnlyList<WeatherPlace> WeatherPlaces
+    {
+        get => (Defaults.StringArrayForKey(nameof(this.WeatherPlaces)) ?? [])
+            .Select(s => s.Split('|'))
+            .Where(p => p.Length == 3)
+            .Select(p => new WeatherPlace(p[0], System.Double.Parse(p[1], System.Globalization.CultureInfo.InvariantCulture), System.Double.Parse(p[2], System.Globalization.CultureInfo.InvariantCulture)))
+            .ToList();
+        set => this.Set(
+            nameof(this.WeatherPlaces),
+            NSArray.FromStrings(value.Select(p => String.Join('|', p.Name.Replace("|", " "), p.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture), p.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture))).ToArray())
+        );
+    }
+
+    /// <summary>The key of the place the Weather tab shows.</summary>
+    public string? WeatherSelected
+    {
+        get => Defaults.StringForKey(nameof(this.WeatherSelected));
+        set => this.Set(nameof(this.WeatherSelected), new NSString(value ?? ""), notify: false);
+    }
+
     public string LastTab
     {
         get => Defaults.StringForKey(nameof(this.LastTab)) ?? "Media";
