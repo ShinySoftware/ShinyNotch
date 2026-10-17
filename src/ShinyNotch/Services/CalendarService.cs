@@ -1,5 +1,3 @@
-using EventKit;
-using Foundation;
 using Shiny;
 using Shiny.Calendar;
 
@@ -29,9 +27,8 @@ public sealed class CalendarService
         this.store = store;
         this.dispatcher = dispatcher;
 
-        // Edits made in Calendar.app (or synced in) arrive as this notification. Shiny.Calendar doesn't
-        // surface it, and its event store is internal, so listen for the notification from any store.
-        NSNotificationCenter.DefaultCenter.AddObserver(EKEventStore.ChangedNotification, _1 => this.dispatcher.Dispatch(() => _ = this.RefreshAsync()));
+        // Edits made in Calendar.app (or synced in) arrive here, possibly off the main thread.
+        this.store.Changed += (_, _) => this.dispatcher.Dispatch(() => _ = this.RefreshAsync());
     }
 
     public async Task<bool> RequestAccessAsync()
