@@ -8,11 +8,13 @@ public sealed class TeleprompterService
 {
     readonly AppSettings settings;
     readonly IDispatcherTimer timer;
-    DateTime lastTick;
+    readonly TimeProvider time;
+    DateTimeOffset lastTick;
 
-    public TeleprompterService(AppSettings settings, IDispatcher dispatcher)
+    public TeleprompterService(AppSettings settings, IDispatcher dispatcher, TimeProvider time)
     {
         this.settings = settings;
+        this.time = time;
         this.timer = dispatcher.CreateTimer();
         this.timer.Interval = TimeSpan.FromMilliseconds(33);
         this.timer.Tick += (_, _) => this.OnTick();
@@ -38,7 +40,7 @@ public sealed class TeleprompterService
         this.IsRunning = !this.IsRunning;
         if (this.IsRunning)
         {
-            this.lastTick = DateTime.UtcNow;
+            this.lastTick = this.time.GetUtcNow();
             this.timer.Start();
         }
         else
@@ -63,15 +65,12 @@ public sealed class TeleprompterService
 
     public void ChangeSpeed(double delta) => this.settings.TeleprompterSpeed = this.Speed + delta;
 
-    public void ChangeFontSize(double delta)
-    {
-        this.settings.TeleprompterFontSize = this.FontSize + delta;
-        this.StateChanged?.Invoke(this, EventArgs.Empty);
-    }
+    // The setting's Changed rebuilds the tab at the new size; raising StateChanged as well built it twice.
+    public void ChangeFontSize(double delta) => this.settings.TeleprompterFontSize = this.FontSize + delta;
 
     void OnTick()
     {
-        var now = DateTime.UtcNow;
+        var now = this.time.GetUtcNow();
         this.Offset += this.Speed * (now - this.lastTick).TotalSeconds;
         this.lastTick = now;
         this.Scrolled?.Invoke(this, EventArgs.Empty);

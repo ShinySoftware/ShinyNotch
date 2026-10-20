@@ -7,8 +7,8 @@ public sealed class AppSettings
 {
     static NSUserDefaults Defaults => NSUserDefaults.StandardUserDefaults;
 
-    /// <summary>A setting the user controls changed.</summary>
-    public event EventHandler? Changed;
+    /// <summary>A setting the user controls changed. The argument is the setting's name.</summary>
+    public event EventHandler<string>? Changed;
 
     public string TeleprompterScript
     {
@@ -108,7 +108,7 @@ public sealed class AppSettings
     {
         Defaults.SetValueForKey(value, new NSString(key));
         if (notify)
-            this.Changed?.Invoke(this, EventArgs.Empty);
+            this.Changed?.Invoke(this, key);
     }
 
     const string DefaultScript =

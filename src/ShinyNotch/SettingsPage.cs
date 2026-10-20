@@ -14,6 +14,9 @@ public sealed class SettingsPage : ContentPage
     static string searchText = "";
     static IReadOnlyList<WeatherPlace> searchResults = [];
 
+    /// <summary>Saves a script edit still waiting on its debounce.</summary>
+    Action? flushScript;
+
     public SettingsPage(AppSettings settings, CalendarService calendar, WeatherService weather, IAppStartupInstaller startup)
     {
         this.Title = "Shiny Notch";
@@ -52,7 +55,30 @@ public sealed class SettingsPage : ContentPage
             FontSize = 14,
             AutoSize = EditorAutoSizeOption.Disabled
         };
-        script.TextChanged += (_, e) => settings.TeleprompterScript = e.NewTextValue ?? "";
+        // Saved once typing pauses, not per keystroke: each save rebuilds an open teleprompter. Leaving the
+        // editor saves straight away, so closing the window can't lose the last few keys.
+        var scriptEdits = 0;
+        var saved = settings.TeleprompterScript;
+        void SaveScript()
+        {
+            if (script.Text is { } text && text != saved)
+                settings.TeleprompterScript = saved = text;
+        }
+        this.flushScript = SaveScript;
+        script.TextChanged += (_, _) =>
+        {
+            var edit = ++scriptEdits;
+            this.Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(500), () =>
+            {
+                if (edit == scriptEdits)
+                    SaveScript();
+            });
+        };
+        script.Unfocused += (_, _) =>
+        {
+            scriptEdits++;
+            SaveScript();
+        };
 
         var calendarStatus = Note(CalendarText(calendar));
         var calendarButton = new Button { Text = "Allow calendar access", HorizontalOptions = LayoutOptions.Start, IsVisible = !calendar.IsAuthorized && !calendar.IsDenied };
@@ -119,6 +145,8 @@ public sealed class SettingsPage : ContentPage
             if (v)
                 weather.RequestLocationAccess();
             _ = weather.RefreshAsync(force: true);
+            // Shows or hides the location access note and button that go with the switch.
+            this.Rebuild();
         }));
 
         if (settings.WeatherUseCurrentLocation)
@@ -204,6 +232,8 @@ public sealed class SettingsPage : ContentPage
 
     void Rebuild()
     {
+        // The fresh page reads the script from settings, so an edit still in its debounce goes there first.
+        this.flushScript?.Invoke();
         if (this.Window is { } window && IPlatformApplication.Current?.Services.GetService<SettingsPage>() is { } fresh)
             window.Page = fresh;
     }

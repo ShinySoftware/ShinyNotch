@@ -113,11 +113,19 @@ public sealed class App : Application
         {
             var state = await startup.GetState();
             var on = state is Shiny.AppStartupState.Enabled or Shiny.AppStartupState.RequiresApproval;
+            // An async void handler: an exception escaping it would take the app down.
             menu.Check("Open at Login", on, async enable =>
             {
-                var result = enable ? await startup.Register() : await startup.Unregister();
-                if (result is Shiny.AppStartupState.RequiresApproval or Shiny.AppStartupState.DisabledByUser)
-                    await startup.OpenSettings();
+                try
+                {
+                    var result = enable ? await startup.Register() : await startup.Unregister();
+                    if (result is Shiny.AppStartupState.RequiresApproval or Shiny.AppStartupState.DisabledByUser)
+                        await startup.OpenSettings();
+                }
+                catch
+                {
+                    // The menu is rebuilt from the real state below, so a failed toggle just doesn't tick.
+                }
                 await this.RefreshTrayMenuAsync();
             });
         }

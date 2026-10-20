@@ -34,6 +34,11 @@ public sealed class NotchController
     static readonly TimeSpan HoverOpenDelay = TimeSpan.FromMilliseconds(140);
     static readonly TimeSpan HoverCloseDelay = TimeSpan.FromMilliseconds(380);
     static readonly TimeSpan HudDuration = TimeSpan.FromSeconds(1.6);
+    /// <summary>How long a finished countdown holds the panel open when nobody is hovering it.</summary>
+    static readonly TimeSpan FinishedHold = TimeSpan.FromSeconds(6);
+    static readonly TimeSpan WeatherCheckEvery = TimeSpan.FromMinutes(5);
+    /// <summary>The store says when events change; this only catches the day moving on.</summary>
+    static readonly TimeSpan CalendarRefreshEvery = TimeSpan.FromMinutes(15);
 
     readonly INotchWindowService notch;
     readonly IFileDropService fileDrop;
@@ -47,6 +52,7 @@ public sealed class NotchController
     readonly TeleprompterService prompter;
     readonly WeatherService weather;
     readonly IDispatcher dispatcher;
+    readonly TimeProvider time;
 
     Mode mode = Mode.Peek;
     NotchTab tab;
@@ -57,7 +63,11 @@ public sealed class NotchController
     bool pinnedByUser;
     int hoverToken;
     int hudToken;
-    IDispatcherTimer? ticker;
+    bool rendering;
+    bool renderQueued;
+    DateTimeOffset nextCalendarRefresh;
+    DateTimeOffset nextWeatherCheck;
+    int tickToken;
 
     public NotchController(
         INotchWindowService notch,
@@ -71,7 +81,8 @@ public sealed class NotchController
         FileTrayService tray,
         TeleprompterService prompter,
         WeatherService weather,
-        IDispatcher dispatcher)
+        IDispatcher dispatcher,
+        TimeProvider time)
     {
         this.notch = notch;
         this.fileDrop = fileDrop;
@@ -85,6 +96,7 @@ public sealed class NotchController
         this.prompter = prompter;
         this.weather = weather;
         this.dispatcher = dispatcher;
+        this.time = time;
         this.tab = Enum.TryParse<NotchTab>(settings.LastTab, out var t) ? t : NotchTab.Media;
     }
 
@@ -123,9 +135,24 @@ public sealed class NotchController
             this.ScheduleClose();
         };
 
-        this.media.Changed += (_, _) => this.Rebuild(NotchTab.Media);
-        this.countdown.StateChanged += (_, _) => this.Rebuild(NotchTab.Timer);
-        this.countdown.Finished += (_, _) => this.Open(NotchTab.Timer);
+        this.media.Changed += (_, _) =>
+        {
+            this.Rebuild(NotchTab.Media);
+            // Any tab: the controls bar's play/pause follows the player.
+            (this.live as PanelView)?.Controls.Tick();
+            this.ScheduleTick();
+        };
+        this.countdown.StateChanged += (_, _) =>
+        {
+            this.Rebuild(NotchTab.Timer);
+            this.ScheduleTick();
+        };
+        this.countdown.Finished += (_, _) =>
+        {
+            // Opened to say so, not by a hover - so no pointer leaving will close it. Hovering it keeps it.
+            this.Open(NotchTab.Timer);
+            this.ScheduleClose(FinishedHold);
+        };
         this.calendar.Changed += (_, _) => this.Rebuild(NotchTab.Calendar);
         this.tray.Changed += (_, _) => this.Rebuild(NotchTab.Tray);
         this.prompter.StateChanged += (_, _) =>
@@ -141,17 +168,21 @@ public sealed class NotchController
         };
         this.controls.ChangedExternally += (_, kind) => this.ShowHud(kind);
         this.weather.Changed += (_, _) => this.Rebuild(NotchTab.Weather);
-        this.settings.Changed += (_, _) => this.Rebuild(NotchTab.Prompter);
+        // Only the settings the Prompter tab draws with; the speed (say) changes nothing on screen.
+        this.settings.Changed += (_, key) =>
+        {
+            if (key is nameof(AppSettings.TeleprompterScript) or nameof(AppSettings.TeleprompterFontSize))
+                this.Rebuild(NotchTab.Prompter);
+        };
 
         this.media.Start();
         this.controls.Start();
         _ = this.calendar.RefreshAsync();
         _ = this.weather.RefreshAsync();
-
-        this.ticker = this.dispatcher.CreateTimer();
-        this.ticker.Interval = TimeSpan.FromSeconds(1);
-        this.ticker.Tick += (_, _) => this.OnTick();
-        this.ticker.Start();
+        var now = this.time.GetUtcNow();
+        this.nextCalendarRefresh = now + CalendarRefreshEvery;
+        this.nextWeatherCheck = now + WeatherCheckEvery;
+        this.ScheduleTick();
 
         await this.notch.ShowAsync(this.BuildPeek(), this.ConfigurePeek);
         this.shownKey = this.Key();
@@ -180,10 +211,10 @@ public sealed class NotchController
         }
     }
 
-    void ScheduleClose()
+    void ScheduleClose(TimeSpan? delay = null)
     {
         var token = ++this.hoverToken;
-        this.dispatcher.DispatchDelayed(HoverCloseDelay, () =>
+        this.dispatcher.DispatchDelayed(delay ?? HoverCloseDelay, () =>
         {
             if (token == this.hoverToken && !this.notch.IsPointerOver && !this.IsPinned && this.mode == Mode.Panel)
                 this.Show(Mode.Peek);
@@ -215,6 +246,9 @@ public sealed class NotchController
         this.settings.LastTab = tab.ToString();
         if (tab == NotchTab.Weather)
             _ = this.weather.RefreshAsync();
+        // The position is carried forward between readings; opening the player is the moment to take one.
+        if (tab == NotchTab.Media)
+            this.media.Refresh();
         this.Show(Mode.Panel);
     }
 
@@ -222,10 +256,9 @@ public sealed class NotchController
     {
         if (this.mode == Mode.Panel)
         {
-            // The panel has the sliders on its Media tab already; just keep them current. Only that tab:
-            // ticking whatever is open would also take an extra, off-schedule reading on the Stats tab.
-            if (this.tab == NotchTab.Media)
-                this.live?.Tick();
+            // The panel has the sliders under every tab already; just keep them current. Only the bar:
+            // ticking the whole panel would also take an extra, off-schedule reading on the Stats tab.
+            (this.live as PanelView)?.Controls.Tick();
             return;
         }
 
@@ -258,6 +291,7 @@ public sealed class NotchController
     {
         this.mode = next;
         _ = this.RenderAsync();
+        this.ScheduleTick();
     }
 
     /// <summary>
@@ -279,7 +313,36 @@ public sealed class NotchController
         _ => $"panel|{this.tab}|{Guid.NewGuid()}"
     };
 
+    /// <summary>
+    /// Renders the current state. One render at a time: asking during one queues another, which renders
+    /// whatever is current when it runs. Overlapping renders could land out of order, leaving the notch on
+    /// older content than <see cref="live"/> and <see cref="shownKey"/> describe.
+    /// </summary>
     async Task RenderAsync()
+    {
+        if (this.rendering)
+        {
+            this.renderQueued = true;
+            return;
+        }
+
+        this.rendering = true;
+        try
+        {
+            do
+            {
+                this.renderQueued = false;
+                await this.RenderOnceAsync();
+            }
+            while (this.renderQueued);
+        }
+        finally
+        {
+            this.rendering = false;
+        }
+    }
+
+    async Task RenderOnceAsync()
     {
         var key = this.Key();
         if (key == this.shownKey)
@@ -305,6 +368,8 @@ public sealed class NotchController
                 var panel = this.BuildPanel();
                 this.live = panel;
                 await this.notch.SetContentAsync(panel, this.ConfigurePanel);
+                // A fresh teleprompter starts at the top; take it back to where the script is.
+                (panel.Body as PrompterTab)?.Scroll();
                 break;
         }
     }
@@ -312,24 +377,25 @@ public sealed class NotchController
     PeekView? BuildPeek()
     {
         var cutout = this.notch.HardwareNotchSize;
-        return PeekView.Create(cutout.Width, Math.Max(cutout.Height, 32), this.media, this.countdown, this.calendar, this.weather);
+        return PeekView.Create(cutout.Width, Math.Max(cutout.Height, 32), this.media, this.countdown, this.calendar, this.weather, this.time);
     }
 
     PanelView BuildPanel()
     {
         View body = this.tab switch
         {
-            NotchTab.Media => new MediaTab(this.media, this.controls),
+            NotchTab.Media => new MediaTab(this.media),
             NotchTab.Weather => new WeatherTab(this.weather, () => this.OpenSettings?.Invoke()),
             NotchTab.Tray => this.BuildTray(),
             NotchTab.Stats => new StatsTab(this.stats),
-            NotchTab.Calendar => new CalendarTab(this.calendar, () => _ = this.RenderAsync()),
+            NotchTab.Calendar => new CalendarTab(this.calendar, this.time, () => _ = this.RenderAsync()),
             NotchTab.Timer => new TimerTab(this.countdown),
             _ => new PrompterTab(this.prompter, () => this.OpenSettings?.Invoke())
         };
 
         var cutout = this.notch.HardwareNotchSize;
-        return new PanelView(this.tab, body, cutout.Width, Math.Max(cutout.Height, 32), this.pinnedByUser, this.Open, this.TogglePin, () => this.OpenSettings?.Invoke());
+        var controls = new ControlsBar(this.media, this.controls, showPlay: this.tab != NotchTab.Media);
+        return new PanelView(this.tab, body, controls, cutout.Width, Math.Max(cutout.Height, 32), this.pinnedByUser, this.Open, this.TogglePin, () => this.OpenSettings?.Invoke());
     }
 
     TrayTab BuildTray()
@@ -354,19 +420,72 @@ public sealed class NotchController
         view.CornerRadius = 22;
     }
 
+    // ---------------------------------------------------------------------------------------------
+    // Clock
+    // ---------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Something on screen counts seconds: a running countdown (the peek and the Timer tab show it), the
+    /// player's position, or the Stats tab's sampling. Everything else changes by the minute at most.
+    /// </summary>
+    bool NeedsSeconds =>
+        this.countdown.IsRunning ||
+        (this.mode == Mode.Panel && this.tab switch
+        {
+            NotchTab.Media => this.media.Current?.IsPlaying == true,
+            NotchTab.Stats => true,
+            _ => false
+        });
+
+    /// <summary>
+    /// The notch's clock. Instead of a timer firing every second for ever, the next tick is set for when
+    /// it is needed: the next second while something counts seconds, else the next minute. A resting
+    /// notch wakes the app once a minute. Re-scheduled whenever what is on screen changes.
+    /// </summary>
+    void ScheduleTick()
+    {
+        var token = ++this.tickToken;
+        var now = this.time.GetUtcNow();
+        // On the boundary, so a clock steps with the system's rather than up to a second behind it.
+        var delay = this.NeedsSeconds
+            ? TimeSpan.FromMilliseconds(1000 - now.Millisecond)
+            : NextMinute(now) - now;
+
+        this.dispatcher.DispatchDelayed(delay, () =>
+        {
+            if (token != this.tickToken)
+                return;
+            this.OnTick();
+            this.ScheduleTick();
+        });
+    }
+
     void OnTick()
     {
-        // Calendar entries and "in 5m" peeks move on their own.
-        if (DateTime.Now.Second == 0)
+        // Due times rather than "second == 0": a tick can be late (App Nap, a busy main thread), and a
+        // skipped second must not be a skipped refresh.
+        var now = this.time.GetUtcNow();
+
+        if (now >= this.nextCalendarRefresh)
+        {
+            this.nextCalendarRefresh = now + CalendarRefreshEvery;
             _ = this.calendar.RefreshAsync();
+        }
 
         // The forecast refreshes itself when stale (20 minutes); asking every five is cheap.
-        if (DateTime.Now.Second == 30 && DateTime.Now.Minute % 5 == 0)
+        if (now >= this.nextWeatherCheck)
+        {
+            this.nextWeatherCheck = now + WeatherCheckEvery;
             _ = this.weather.RefreshAsync();
+        }
 
         this.live?.Tick();
 
+        // The peek re-renders when what it would show has changed - a meeting coming within 15 minutes.
         if (this.mode == Mode.Peek && this.Key() != this.shownKey)
             _ = this.RenderAsync();
     }
+
+    static DateTimeOffset NextMinute(DateTimeOffset now)
+        => new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0, now.Offset).AddMinutes(1);
 }

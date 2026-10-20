@@ -34,6 +34,7 @@ public static class MauiProgram
             o.DisplayName = "Shiny Notch";
         });
 
+        builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddSingleton<AppSettings>();
         builder.Services.AddSingleton(sp => sp.GetRequiredService<IDispatcherProvider>().GetForCurrentThread()!);
         builder.Services.AddSingleton<NowPlayingService>();

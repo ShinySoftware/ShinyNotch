@@ -88,10 +88,12 @@ public sealed class FileTrayService
     /// <summary>The Finder icon for a file, as PNG bytes.</summary>
     public static byte[]? IconPng(string path, int size = 64)
     {
-        var icon = NSWorkspace.SharedWorkspace.IconForFile(path);
+        // Disposed rather than left to the GC: a tray rebuild renders a dozen of these, and the
+        // managed wrappers are too small for the GC to hurry over the native images behind them.
+        using var icon = NSWorkspace.SharedWorkspace.IconForFile(path);
         icon.Size = new CoreGraphics.CGSize(size, size);
         var rect = new CoreGraphics.CGRect(0, 0, size, size);
-        var cg = icon.AsCGImage(ref rect, null, null);
+        using var cg = icon.AsCGImage(ref rect, null, null);
         if (cg == null)
             return null;
 

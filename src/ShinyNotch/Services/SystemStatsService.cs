@@ -26,10 +26,13 @@ public sealed class SystemStatsService
     /// <summary>Re-opening the tab within this long carries on, rather than starting the readings over.</summary>
     static readonly TimeSpan ResumeWindow = TimeSpan.FromSeconds(3);
 
+    readonly TimeProvider time;
     (ulong Busy, ulong Total) lastCpu;
     (ulong Read, ulong Written) lastDisk;
     (ulong In, ulong Out) lastNet;
-    DateTime lastSample;
+    DateTimeOffset lastSample;
+
+    public SystemStatsService(TimeProvider time) => this.time = time;
 
     /// <summary>Recent CPU readings, newest last, for the sparkline.</summary>
     public Queue<double> CpuHistory { get; } = new();
@@ -43,7 +46,7 @@ public sealed class SystemStatsService
     /// </summary>
     public void Begin()
     {
-        if (this.Current != null && DateTime.UtcNow - this.lastSample < ResumeWindow)
+        if (this.Current != null && this.time.GetUtcNow() - this.lastSample < ResumeWindow)
             return;
 
         this.Current = null;
@@ -56,12 +59,12 @@ public sealed class SystemStatsService
         this.lastCpu = SystemCounters.CpuTicks();
         this.lastDisk = SystemCounters.DiskBytes();
         this.lastNet = SystemCounters.NetworkBytes();
-        this.lastSample = DateTime.UtcNow;
+        this.lastSample = this.time.GetUtcNow();
     }
 
     public SystemStats Sample()
     {
-        var now = DateTime.UtcNow;
+        var now = this.time.GetUtcNow();
         var seconds = Math.Max(0.2, (now - this.lastSample).TotalSeconds);
 
         var cpu = SystemCounters.CpuTicks();

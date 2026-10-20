@@ -9,7 +9,7 @@ A menu-bar app for macOS that turns the MacBook camera notch into a live panel. 
 Hover the notch to open it, and move away to let it fold back into the camera. Apple silicon only.
 
 <p align="center">
-  <img src="docs/screenshots/peek.png" width="372" alt="The collapsed notch: album art left of the camera, the temperature right of it" />
+  <img src="docs/screenshots/peek.png" width="388" alt="The collapsed notch: album art and its bars left of the camera, the weather right of it" />
 </p>
 
 ## Features
@@ -17,13 +17,13 @@ Hover the notch to open it, and move away to let it fold back into the camera. A
 ### Peek
 
 While collapsed, the notch shows a "wing" either side of the camera:
-- **Left:** what's playing.
-- **Right:** a running timer, a meeting starting in the next 15 minutes, or the temperature where you are, in that order.
+- **Left:** what's playing: the artwork, and bars in the artwork's colour (flat when paused).
+- **Right:** a running timer, a meeting starting in the next 15 minutes, or the weather where you are, in that order.
 
 With nothing to show, the notch disappears into the camera housing.
 
 ### Now Playing
-Artwork, title, position and previous/play/next for Apple Music and Spotify, with volume and display brightness sliders.
+Artwork, title, a scrubber and previous/play/next for Apple Music and Spotify, on a card tinted with the artwork's colour.
 
 <img src="docs/screenshots/media.png" width="528" alt="Now Playing tab" />
 
@@ -38,7 +38,7 @@ Drop files onto the notch to shelve them. Copy them back out (⌘V in Finder pas
 <img src="docs/screenshots/tray.png" width="528" alt="File Tray tab" />
 
 ### System
-CPU with a sparkline, GPU, memory, disk read/write and network up/down, updated once a second.
+CPU, GPU and memory as rings, a chart of the last 24 seconds of CPU, and network and disk rates, updated once a second while the tab is open.
 
 <img src="docs/screenshots/stats.png" width="528" alt="System stats tab" />
 
@@ -48,7 +48,7 @@ The rest of today and tomorrow, from every calendar you have.
 <img src="docs/screenshots/calendar.png" width="528" alt="Calendar tab" />
 
 ### Timer
-Presets from 1 to 45 minutes, plus +1m, pause and cancel. The countdown shows in the peek, and the notch chimes and opens when it ends.
+A ring that drains as the countdown runs, presets from 1 to 45 minutes, plus +1 min, pause and cancel. The countdown shows in the peek, and the notch chimes and opens for a few seconds when it ends.
 
 <img src="docs/screenshots/timer.png" width="528" alt="Timer tab" />
 
@@ -57,10 +57,13 @@ Your script scrolls right under the camera, so you read while looking at the len
 
 <img src="docs/screenshots/teleprompter.png" width="528" alt="Teleprompter tab" />
 
+### Controls on every tab
+Play/pause, volume and display brightness sit under every tab, and follow the keys and Control Centre.
+
 ### Volume and brightness HUD
 Changes from the keys or Control Centre flash in the notch.
 
-<img src="docs/screenshots/hud.png" width="450" alt="Volume HUD in the notch" />
+<img src="docs/screenshots/hud.png" width="436" alt="Volume HUD in the notch" />
 
 ### And
 - **Pin** (⦿) keeps the panel open.
@@ -126,6 +129,9 @@ rsvg-convert -w 1024 -h 1024 src/ShinyNotch/Resources/AppIcon/appicon.svg -o src
 | Everything else | nothing | |
 
 ## How it works
+
+- **Low power.** Nothing polls while nothing changes. Music and Spotify announce every play, pause and track change in a distributed notification; CoreAudio listeners report volume, mute and output-device changes; DisplayServices reports brightness. The notch's clock ticks once a second only while something on screen counts seconds (a running timer, a playing track's position, the System tab) and once a minute otherwise. A countdown is a single timer set for its end.
+- **The look** is Apple's dark system palette, SF Symbols (drawn once into cached images, so no icon assets ship), and Maui.Graphics drawing for the rings, bars and charts, which repaint in place without rebuilding anything.
 
 - `NotchController` runs the notch in one of three modes (peek, panel, HUD). It rebuilds the content when its structure changes and updates text in place otherwise. The AppKit head never creates native views for children added to an on-screen layout, so a content swap is a fresh page, and so is a change to the Settings page's lists.
 - **Now Playing** uses AppleScript, not MediaRemote. Since macOS 15.4 the system-wide now-playing API returns nothing to apps without an Apple entitlement, so only Music and Spotify are seen.

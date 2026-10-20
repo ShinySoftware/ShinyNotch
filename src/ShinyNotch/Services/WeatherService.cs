@@ -37,16 +37,21 @@ public sealed class WeatherService
     static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(20);
 
     readonly AppSettings settings;
+    readonly TimeProvider time;
     readonly HttpClient http = new() { Timeout = TimeSpan.FromSeconds(15) };
     readonly Dictionary<string, WeatherReport> reports = new();
     readonly CLLocationManager location = new();
     TaskCompletionSource<CLLocation?>? pendingFix;
     WeatherPlace? current;
     bool refreshing;
+    bool refreshQueued;
+    bool queuedForce;
+    int unitVersion;
 
-    public WeatherService(AppSettings settings)
+    public WeatherService(AppSettings settings, TimeProvider time)
     {
         this.settings = settings;
+        this.time = time;
         this.location.DesiredAccuracy = CLLocation.AccuracyKilometer;
         this.location.LocationsUpdated += (_, e) =>
         {
@@ -76,6 +81,7 @@ public sealed class WeatherService
     public void SetUnit(string unit)
     {
         this.settings.TemperatureUnit = unit;
+        this.unitVersion++;
         this.reports.Clear();
         this.Changed?.Invoke(this, EventArgs.Empty);
         _ = this.RefreshAsync(force: true);
@@ -183,39 +189,66 @@ public sealed class WeatherService
     }
 
     /// <summary>Refreshes the selected place (and finds where you are) when its report is stale.</summary>
+    /// <remarks>
+    /// One refresh at a time. Asking while one is running queues another for when it finishes (forced, if
+    /// any of the asks was), so a new place, a new selection or a new unit is never just dropped.
+    /// </remarks>
     public async Task RefreshAsync(bool force = false)
     {
         if (this.refreshing)
+        {
+            this.refreshQueued = true;
+            this.queuedForce |= force;
             return;
+        }
 
         this.refreshing = true;
         try
         {
-            if (this.settings.WeatherUseCurrentLocation)
+            while (true)
             {
-                // First run: ask. The answer arrives through AuthorizationChanged, which refreshes again.
-                if (CLLocationManager.Status == CLAuthorizationStatus.NotDetermined)
-                    this.RequestLocationAccess();
-                else if (this.IsLocationAuthorized)
-                    await this.UpdateCurrentPlaceAsync().ConfigureAwait(true);
-            }
+                await this.RefreshOnceAsync(force).ConfigureAwait(true);
+                if (!this.refreshQueued)
+                    break;
 
-            if (this.SelectedPlace is not { } place)
-                return;
-
-            if (!force && this.reports.TryGetValue(place.Key, out var existing) && DateTime.UtcNow - existing.FetchedUtc < StaleAfter)
-                return;
-
-            if (await this.FetchAsync(place).ConfigureAwait(true) is { } report)
-            {
-                this.reports[place.Key] = report;
-                this.Changed?.Invoke(this, EventArgs.Empty);
+                force = this.queuedForce;
+                this.refreshQueued = false;
+                this.queuedForce = false;
             }
         }
         finally
         {
             this.refreshing = false;
         }
+    }
+
+    async Task RefreshOnceAsync(bool force)
+    {
+        if (this.settings.WeatherUseCurrentLocation)
+        {
+            // First run: ask. The answer arrives through AuthorizationChanged, which refreshes again.
+            if (CLLocationManager.Status == CLAuthorizationStatus.NotDetermined)
+                this.RequestLocationAccess();
+            else if (this.IsLocationAuthorized)
+                await this.UpdateCurrentPlaceAsync().ConfigureAwait(true);
+        }
+
+        if (this.SelectedPlace is not { } place)
+            return;
+
+        if (!force && this.reports.TryGetValue(place.Key, out var existing) && this.time.GetUtcNow().UtcDateTime - existing.FetchedUtc < StaleAfter)
+            return;
+
+        var unitVersion = this.unitVersion;
+        if (await this.FetchAsync(place).ConfigureAwait(true) is not { } report)
+            return;
+
+        // While it was fetching, the unit may have switched (the report is in the old one) or the place been removed.
+        if (unitVersion != this.unitVersion || this.Places.All(p => p.Key != place.Key))
+            return;
+
+        this.reports[place.Key] = report;
+        this.Changed?.Invoke(this, EventArgs.Empty);
     }
 
     async Task UpdateCurrentPlaceAsync()
@@ -257,7 +290,7 @@ public sealed class WeatherService
             using var doc = JsonDocument.Parse(await this.http.GetStringAsync(url).ConfigureAwait(true));
             var root = doc.RootElement;
             var offset = TimeSpan.FromSeconds(root.GetProperty("utc_offset_seconds").GetInt32());
-            var localNow = DateTime.UtcNow + offset;
+            var localNow = this.time.GetUtcNow().UtcDateTime + offset;
 
             var cur = root.GetProperty("current");
             var hourly = root.GetProperty("hourly");
@@ -296,7 +329,7 @@ public sealed class WeatherService
                 days.Count > 0 ? days[0].Low : 0,
                 hours,
                 days,
-                DateTime.UtcNow
+                this.time.GetUtcNow().UtcDateTime
             );
         }
         catch
@@ -315,18 +348,22 @@ public sealed class WeatherService
     // WMO weather codes
     // ---------------------------------------------------------------------------------------------
 
+    /// <summary>The SF Symbol for a WMO code, drawn multicolour - the same set the iOS weather widget uses.</summary>
     public static string Symbol(int code, bool isDay = true) => code switch
     {
-        0 => isDay ? "☀️" : "🌙",
-        1 => isDay ? "🌤️" : "🌙",
-        2 => isDay ? "⛅️" : "☁️",
-        3 => "☁️",
-        45 or 48 => "🌫️",
-        51 or 53 or 55 or 56 or 57 => "🌦️",
-        61 or 63 or 65 or 66 or 67 or 80 or 81 or 82 => "🌧️",
-        71 or 73 or 75 or 77 or 85 or 86 => "🌨️",
-        95 or 96 or 99 => "⛈️",
-        _ => "🌡️"
+        0 => isDay ? "sun.max.fill" : "moon.stars.fill",
+        1 => isDay ? "sun.max.fill" : "moon.fill",
+        2 => isDay ? "cloud.sun.fill" : "cloud.moon.fill",
+        3 => "cloud.fill",
+        45 or 48 => "cloud.fog.fill",
+        51 or 53 or 55 => "cloud.drizzle.fill",
+        56 or 57 or 66 or 67 => "cloud.sleet.fill",
+        61 or 63 or 80 or 81 => isDay ? "cloud.sun.rain.fill" : "cloud.moon.rain.fill",
+        65 or 82 => "cloud.heavyrain.fill",
+        71 or 73 or 75 or 77 or 85 or 86 => "cloud.snow.fill",
+        95 => "cloud.bolt.rain.fill",
+        96 or 99 => "cloud.hail.fill",
+        _ => "thermometer.medium"
     };
 
     public static string Describe(int code) => code switch

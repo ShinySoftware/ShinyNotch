@@ -4,8 +4,8 @@ using ObjCRuntime;
 
 namespace ShinyNotch.Native;
 
-/// <summary>CoreAudio: the default output device's volume and mute.</summary>
-static class CoreAudio
+/// <summary>CoreAudio: the default output device's volume and mute, and word when either changes.</summary>
+static unsafe class CoreAudio
 {
     const string CoreAudioLib = "/System/Library/Frameworks/CoreAudio.framework/CoreAudio";
     const string AudioToolboxLib = "/System/Library/Frameworks/AudioToolbox.framework/AudioToolbox";
@@ -38,6 +38,21 @@ static class CoreAudio
 
     [DllImport(AudioToolboxLib)]
     static extern int AudioHardwareServiceSetPropertyData(uint objectId, ref PropertyAddress address, uint qualifierSize, IntPtr qualifier, uint dataSize, ref float data);
+
+    [DllImport(CoreAudioLib)]
+    static extern int AudioObjectAddPropertyListener(uint objectId, ref PropertyAddress address, delegate* unmanaged<uint, uint, PropertyAddress*, IntPtr, int> listener, IntPtr clientData);
+
+    [DllImport(CoreAudioLib)]
+    static extern int AudioObjectRemovePropertyListener(uint objectId, ref PropertyAddress address, delegate* unmanaged<uint, uint, PropertyAddress*, IntPtr, int> listener, IntPtr clientData);
+
+    [DllImport(AudioToolboxLib)]
+    static extern int AudioHardwareServiceAddPropertyListener(uint objectId, ref PropertyAddress address, delegate* unmanaged<uint, uint, PropertyAddress*, IntPtr, int> listener, IntPtr clientData);
+
+    [DllImport(AudioToolboxLib)]
+    static extern int AudioHardwareServiceRemovePropertyListener(uint objectId, ref PropertyAddress address, delegate* unmanaged<uint, uint, PropertyAddress*, IntPtr, int> listener, IntPtr clientData);
+
+    static Action? changed;
+    static uint observedDevice;
 
     static uint FourCC(string s) => (uint)((s[0] << 24) | (s[1] << 16) | (s[2] << 8) | s[3]);
 
@@ -91,13 +106,63 @@ static class CoreAudio
         uint value = muted ? 1u : 0u;
         AudioObjectSetPropertyData(device, ref address, 0, IntPtr.Zero, sizeof(uint), ref value);
     }
+
+    /// <summary>
+    /// Calls <paramref name="onChange"/> when the default output device, its volume or its mute changes:
+    /// listeners rather than a poll, so nothing runs while nothing changes. It arrives on a CoreAudio
+    /// thread; the handler should hop to the main thread and call <see cref="FollowDefaultDevice"/>.
+    /// </summary>
+    public static void Observe(Action onChange)
+    {
+        changed = onChange;
+        var address = new PropertyAddress { Selector = DefaultOutputDevice, Scope = ScopeGlobal, Element = 0 };
+        AudioObjectAddPropertyListener(SystemObject, ref address, &OnPropertyChanged, IntPtr.Zero);
+        FollowDefaultDevice();
+    }
+
+    /// <summary>Moves the volume and mute listeners to the default output device, if it has changed.</summary>
+    public static void FollowDefaultDevice()
+    {
+        var device = OutputDevice();
+        if (device == observedDevice)
+            return;
+
+        if (observedDevice != 0)
+            Listen(observedDevice, false);
+        observedDevice = device;
+        if (device != 0)
+            Listen(device, true);
+    }
+
+    static void Listen(uint device, bool add)
+    {
+        var volume = new PropertyAddress { Selector = VirtualMainVolume, Scope = ScopeOutput, Element = 0 };
+        var mute = new PropertyAddress { Selector = Mute, Scope = ScopeOutput, Element = 0 };
+        if (add)
+        {
+            AudioHardwareServiceAddPropertyListener(device, ref volume, &OnPropertyChanged, IntPtr.Zero);
+            AudioObjectAddPropertyListener(device, ref mute, &OnPropertyChanged, IntPtr.Zero);
+        }
+        else
+        {
+            AudioHardwareServiceRemovePropertyListener(device, ref volume, &OnPropertyChanged, IntPtr.Zero);
+            AudioObjectRemovePropertyListener(device, ref mute, &OnPropertyChanged, IntPtr.Zero);
+        }
+    }
+
+    [UnmanagedCallersOnly]
+    static int OnPropertyChanged(uint objectId, uint count, PropertyAddress* addresses, IntPtr clientData)
+    {
+        changed?.Invoke();
+        return 0;
+    }
 }
 
 /// <summary>
 /// Built-in display brightness through the private DisplayServices framework — the same call the
 /// brightness keys and Control Centre use. There is no public API for it on Apple silicon.
 /// </summary>
-static class Brightness
+static unsafe class Brightness
 {
     const string DisplayServicesLib = "/System/Library/PrivateFrameworks/DisplayServices.framework/DisplayServices";
     const string CoreGraphicsLib = "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics";
@@ -107,6 +172,11 @@ static class Brightness
 
     [DllImport(DisplayServicesLib)]
     static extern int DisplayServicesSetBrightness(uint display, float brightness);
+
+    [DllImport(DisplayServicesLib)]
+    static extern int DisplayServicesRegisterForBrightnessChangeNotifications(uint display, IntPtr observer, delegate* unmanaged<IntPtr, IntPtr, IntPtr, IntPtr, IntPtr, void> callback);
+
+    static Action? changed;
 
     [DllImport(CoreGraphicsLib)]
     static extern int CGGetActiveDisplayList(uint maxDisplays, [Out] uint[] displays, out uint count);
@@ -157,6 +227,34 @@ static class Brightness
         catch (DllNotFoundException) { }
         catch (EntryPointNotFoundException) { }
     }
+
+    /// <summary>
+    /// Calls <paramref name="onChange"/> whenever the built-in display's brightness changes - keys, Control
+    /// Centre or auto-brightness - delivered on the main run loop. False when the private call is missing
+    /// (a future macOS), so the caller can fall back to polling.
+    /// </summary>
+    public static bool Observe(Action onChange)
+    {
+        try
+        {
+            changed = onChange;
+            var display = Display();
+            // The observer is only an identity for the notification centre; the display id will do.
+            return DisplayServicesRegisterForBrightnessChangeNotifications(display, (IntPtr)display, &OnBrightnessChanged) == 0;
+        }
+        catch (DllNotFoundException)
+        {
+            return false;
+        }
+        catch (EntryPointNotFoundException)
+        {
+            return false;
+        }
+    }
+
+    [UnmanagedCallersOnly]
+    static void OnBrightnessChanged(IntPtr center, IntPtr observer, IntPtr name, IntPtr obj, IntPtr userInfo)
+        => changed?.Invoke();
 }
 
 /// <summary>Mach host statistics, sysctl, IOKit registry and getifaddrs — the raw counters behind the Stats tab.</summary>
@@ -207,6 +305,11 @@ static unsafe class SystemCounters
 
     static readonly uint Host = mach_host_self();
 
+    // Sampled once a second while the Stats tab is open; made once rather than per service per sample.
+    static readonly NSString GpuUtilisationKey = new("Device Utilization %");
+    static readonly NSString BytesReadKey = new("Bytes (Read)");
+    static readonly NSString BytesWrittenKey = new("Bytes (Write)");
+
     /// <summary>Cumulative CPU ticks: busy (user + system + nice) and total.</summary>
     public static (ulong Busy, ulong Total) CpuTicks()
     {
@@ -251,7 +354,7 @@ static unsafe class SystemCounters
         double? result = null;
         ForEachService("IOAccelerator", "PerformanceStatistics", stats =>
         {
-            if (stats.ObjectForKey(new NSString("Device Utilization %")) is NSNumber n)
+            if (stats.ObjectForKey(GpuUtilisationKey) is NSNumber n)
                 result = Math.Max(result ?? 0, n.DoubleValue);
         });
         return result;
@@ -263,9 +366,9 @@ static unsafe class SystemCounters
         ulong read = 0, written = 0;
         ForEachService("IOBlockStorageDriver", "Statistics", stats =>
         {
-            if (stats.ObjectForKey(new NSString("Bytes (Read)")) is NSNumber r)
+            if (stats.ObjectForKey(BytesReadKey) is NSNumber r)
                 read += r.UInt64Value;
-            if (stats.ObjectForKey(new NSString("Bytes (Write)")) is NSNumber w)
+            if (stats.ObjectForKey(BytesWrittenKey) is NSNumber w)
                 written += w.UInt64Value;
         });
         return (read, written);
@@ -285,8 +388,10 @@ static unsafe class SystemCounters
             {
                 try
                 {
+                    // Released here, not by the GC: there is one of these per GPU and per disk, every sample.
                     var value = IORegistryEntryCreateCFProperty(entry, key.Handle, IntPtr.Zero, 0);
-                    if (value != IntPtr.Zero && Runtime.GetNSObject<NSDictionary>(value, owns: true) is { } dict)
+                    using var dict = value != IntPtr.Zero ? Runtime.GetNSObject<NSDictionary>(value, owns: true) : null;
+                    if (dict != null)
                         visit(dict);
                 }
                 finally
