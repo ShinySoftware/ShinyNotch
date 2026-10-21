@@ -1,6 +1,15 @@
 <Solution>
-  <Project Path="src/ShinyNotch.Core/ShinyNotch.Core.csproj" />
-  <Project Path="src/ShinyNotch/ShinyNotch.csproj" />
-  <Project Path="src/ShinyNotch.Linux/ShinyNotch.Linux.csproj" />
-  <Project Path="src/ShinyNotch.Windows/ShinyNotch.Windows.csproj" />
+    <Folder Name="/.Solution/">
+        <File Path=".github\workflows\release.yml" />
+        <File Path="Directory.Build.props" />
+        <File Path="Directory.Build.targets" />
+        <File Path="global.json" />
+        <File Path="LICENSE.md" />
+        <File Path="NuGet.config" />
+        <File Path="README.md" />
+    </Folder>
+    <Project Path="src/ShinyNotch.Core/ShinyNotch.Core.csproj" />
+    <Project Path="src/ShinyNotch/ShinyNotch.csproj" />
+    <Project Path="src/ShinyNotch.Linux/ShinyNotch.Linux.csproj" />
+    <Project Path="src/ShinyNotch.Windows/ShinyNotch.Windows.csproj" />
 </Solution>

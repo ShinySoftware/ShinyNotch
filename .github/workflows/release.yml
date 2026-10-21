@@ -22,7 +22,7 @@ jobs:
   release:
     runs-on: xcode-27
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Version
         run: |
@@ -50,13 +50,11 @@ jobs:
           sudo xcode-select -s "$XCODE/Contents/Developer"
           xcodebuild -version
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.4xx
-
-      - name: Install workloads
-        run: dotnet workload install macos maui --version "$WORKLOAD_VERSION"
-
+          workloads: macos, maui
+          
       - name: Import signing certificate
         env:
           CERT_P12_BASE64: ${{ secrets.APPLE_MACOS_DIRECT_CERTIFICATE_P12 }}
