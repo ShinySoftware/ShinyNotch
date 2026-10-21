@@ -276,6 +276,9 @@ public sealed class NotchController
         this.settings.LastTab = tab.ToString();
         if (tab == NotchTab.Weather)
             _ = this.weather.RefreshAsync();
+        // Coming back to the calendar starts on today, not whatever day was last picked.
+        if (tab == NotchTab.Calendar && this.calendar.SelectedDate != null)
+            _ = this.calendar.SelectAsync(null);
         // The position is carried forward between readings; opening the player is the moment to take one.
         if (tab == NotchTab.Media)
             this.media.Refresh();

@@ -20,6 +20,14 @@ public sealed class CalendarService
     public bool IsDenied => this.store.GetCurrentAccess() is AccessState.Denied or AccessState.Restricted;
 
     IReadOnlyList<CalendarItem> fetched = [];
+    IReadOnlyList<CalendarItem> selectedEvents = [];
+    int selectVersion;
+
+    /// <summary>The day picked in the week strip; null is today, which shows <see cref="Upcoming"/> instead.</summary>
+    public DateTime? SelectedDate { get; private set; }
+
+    /// <summary>Every event on <see cref="SelectedDate"/>, past ones included.</summary>
+    public IReadOnlyList<CalendarItem> SelectedEvents => this.selectedEvents;
 
     /// <summary>
     /// What's left of the last query: events drop off here as they end, so the store only needs asking
@@ -64,6 +72,63 @@ public sealed class CalendarService
         }
     }
 
+    /// <summary>Picks a day to show; today (or null) goes back to the upcoming list.</summary>
+    public async Task SelectAsync(DateTime? date)
+    {
+        var today = this.time.GetLocalNow().Date;
+        date = date?.Date == today ? null : date?.Date;
+        var version = ++this.selectVersion;
+        this.SelectedDate = date;
+        this.selectedEvents = [];
+
+        if (date is { } day && this.IsAuthorized)
+        {
+            try
+            {
+                var colors = await this.GetColorsAsync().ConfigureAwait(true);
+                var events = await this.store
+                    .Query()
+                    .Between(day, day.AddDays(1))
+                    .ToListAsync()
+                    .ConfigureAwait(true);
+
+                if (version != this.selectVersion)
+                    return;
+
+                this.selectedEvents = events
+                    .Select(e => ToItem(e, colors))
+                    .Where(e => e.End > day && e.Start < day.AddDays(1))
+                    .OrderBy(e => e.AllDay ? 0 : 1)
+                    .ThenBy(e => e.Start)
+                    .ToList();
+            }
+            catch
+            {
+                if (version != this.selectVersion)
+                    return;
+            }
+        }
+
+        this.Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    async Task<Dictionary<string, Color>> GetColorsAsync()
+    {
+        var calendars = await this.store.GetAll().ConfigureAwait(true);
+        return calendars
+            .Where(c => c.Id is not null)
+            .ToDictionary(c => c.Id!, c => ToColor(c.Color));
+    }
+
+    static CalendarItem ToItem(CalendarEvent e, Dictionary<string, Color> colors) => new(
+        String.IsNullOrWhiteSpace(e.Title) ? "(No title)" : e.Title,
+        e.Start.LocalDateTime,
+        e.End.LocalDateTime,
+        e.IsAllDay,
+        e.CalendarId is not null && colors.TryGetValue(e.CalendarId, out var color) ? color : DefaultColor,
+        String.IsNullOrWhiteSpace(e.Location) ? null : e.Location
+    );
+
     /// <summary>The rest of today and all of tomorrow.</summary>
     public async Task RefreshAsync()
     {
@@ -74,11 +139,11 @@ public sealed class CalendarService
         var version = ++this.refreshVersion;
         var now = this.time.GetLocalNow().DateTime;
 
-        IReadOnlyList<Shiny.Calendar.Calendar> calendars;
+        Dictionary<string, Color> colors;
         IReadOnlyList<CalendarEvent> events;
         try
         {
-            calendars = await this.store.GetAll().ConfigureAwait(true);
+            colors = await this.GetColorsAsync().ConfigureAwait(true);
             events = await this.store
                 .Query()
                 .Between(now, now.Date.AddDays(2))
@@ -93,26 +158,19 @@ public sealed class CalendarService
         if (version != this.refreshVersion)
             return;
 
-        var colors = calendars
-            .Where(c => c.Id is not null)
-            .ToDictionary(c => c.Id!, c => ToColor(c.Color));
-
         this.fetched = events
-            .Select(e => new CalendarItem(
-                String.IsNullOrWhiteSpace(e.Title) ? "(No title)" : e.Title,
-                e.Start.LocalDateTime,
-                e.End.LocalDateTime,
-                e.IsAllDay,
-                e.CalendarId is not null && colors.TryGetValue(e.CalendarId, out var color) ? color : DefaultColor,
-                String.IsNullOrWhiteSpace(e.Location) ? null : e.Location
-            ))
+            .Select(e => ToItem(e, colors))
             .Where(e => e.End > now)
             .OrderBy(e => e.AllDay ? 0 : 1)
             .ThenBy(e => e.Start)
             .Take(24)
             .ToList();
 
-        this.Changed?.Invoke(this, EventArgs.Empty);
+        // A store change can touch the picked day too; re-reading it raises Changed for both.
+        if (this.SelectedDate is { } selected)
+            await this.SelectAsync(selected).ConfigureAwait(true);
+        else
+            this.Changed?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>The next timed event starting within <paramref name="window"/>, for the peek.</summary>

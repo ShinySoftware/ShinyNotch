@@ -20,6 +20,14 @@
         <RuntimeIdentifier>osx-arm64</RuntimeIdentifier>
     </PropertyGroup>
 
+    <!-- Distribution outside the App Store: Developer ID signing with the hardened runtime, which
+         notarization requires. CI passes CodesignKey; local Release builds without it stay ad-hoc signed. -->
+    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+        <CodesignEntitlements>Entitlements.plist</CodesignEntitlements>
+        <UseHardenedRuntime>true</UseHardenedRuntime>
+        <EnableCodeSigning>true</EnableCodeSigning>
+    </PropertyGroup>
+
     <ItemGroup>
         <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.100" />
         <PackageReference Include="Microsoft.Maui.Platforms.MacOS" Version="0.1.0-preview.13.26514.2" />

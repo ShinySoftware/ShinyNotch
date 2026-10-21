@@ -61,7 +61,7 @@ sealed class MediaTab : VerticalStackLayout, ILiveView
                 Children =
                 {
                     Ui.Label(now.Title, 15, bold: true).At(column: 0),
-                    Drawing.View(new BarsDrawable(now.TrackKey) { IsPlaying = now.IsPlaying, Fill = tint }, 16, 14).At(column: 1)
+                    MusicBars.Create(now.TrackKey, now.IsPlaying, tint).At(column: 1)
                 }
             };
 

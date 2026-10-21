@@ -45,13 +45,12 @@ sealed class PeekView : Grid, ILiveView
         View? left = null;
         if (media.Current is { } now)
         {
-            var bars = new BarsDrawable(now.TrackKey) { IsPlaying = now.IsPlaying, Fill = media.ArtworkColor ?? Ui.Text };
             left = new HorizontalStackLayout
             {
                 Spacing = 8,
                 VerticalOptions = LayoutOptions.Center,
                 HorizontalOptions = LayoutOptions.Start,
-                Children = { Ui.Artwork(media.Artwork, 22, 6), Drawing.View(bars, 16, 14) }
+                Children = { Ui.Artwork(media.Artwork, 22, 6), MusicBars.Create(now.TrackKey, now.IsPlaying, media.ArtworkColor ?? Ui.Text) }
             };
         }
 

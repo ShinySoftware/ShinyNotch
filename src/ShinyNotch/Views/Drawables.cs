@@ -1,3 +1,6 @@
+using Shiny.Controls.MotionIcons;
+using Shiny.Maui.Controls;
+
 namespace ShinyNotch.Views;
 
 /// <summary>
@@ -86,39 +89,62 @@ sealed class RingDrawable : IDrawable
 }
 
 /// <summary>
-/// The music bars beside the artwork. Static, not animated: a dancing visualizer means redrawing many
-/// times a second for as long as music plays, which is exactly the CPU this app doesn't spend. The
-/// heights come from the track, so each song has its own shape; paused, they sink to a flat line.
+/// The music bars beside the artwork. Playing, they dance: a Shiny <see cref="MotionIconView"/>, whose
+/// one frame timer per window runs only while an icon is animating and stops when the view leaves the
+/// screen. A pause rebuilds the view, so paused bars are a static <see cref="PausedBarsDrawable"/> and cost
+/// nothing. Each track's beat comes from its key, so every song dances its own way.
 /// </summary>
-sealed class BarsDrawable : IDrawable
+static class MusicBars
 {
-    readonly double[] heights;
+    const int Count = 4;
+    const float BarWidth = 4f;
+    const float Gap = 2f;
 
-    public BarsDrawable(string seed, int count = 4)
+    public static View Create(string trackKey, bool isPlaying, Color fill, double width = 16, double height = 14)
     {
-        var random = new Random(StableHash(seed));
-        this.heights = Enumerable.Range(0, count).Select(_ => 0.35 + random.NextDouble() * 0.65).ToArray();
-    }
+        if (!isPlaying)
+            return Drawing.View(new PausedBarsDrawable { Fill = fill }, width, height);
 
-    public bool IsPlaying { get; set; }
-    public Color Fill { get; set; } = Ui.Text;
-
-    public void Draw(ICanvas canvas, RectF rect)
-    {
-        var count = this.heights.Length;
-        var gap = rect.Width * 0.12f;
-        var bar = (rect.Width - gap * (count - 1)) / count;
-
-        canvas.FillColor = this.IsPlaying ? this.Fill : this.Fill.WithAlpha(0.45f);
-        for (var i = 0; i < count; i++)
+        return new MotionIconView
         {
-            var h = (float)(rect.Height * (this.IsPlaying ? this.heights[i] : 0.18));
-            var x = rect.X + i * (bar + gap);
-            canvas.FillRoundedRectangle(x, rect.Bottom - h - (rect.Height - h) / 2, bar, h, bar / 2);
-        }
+            Source = Dancing(trackKey),
+            Trigger = MotionTrigger.Loop,
+            Color = fill,
+            WidthRequest = width,
+            HeightRequest = height,
+            BackgroundColor = Colors.Transparent,
+            InputTransparent = true,
+            VerticalOptions = LayoutOptions.Center
+        };
     }
 
-    // string.GetHashCode is randomised per process; the bars should look the same every launch.
+    // Four pills in the 24-unit box, each squashed toward the middle on its own keys. A cycle starts and
+    // ends on the same height, so the loop has no seam.
+    static MotionIconDefinition Dancing(string trackKey)
+    {
+        var random = new Random(StableHash(trackKey));
+        var parts = new MotionIconPart[Count];
+        var spec = new MotionSpecBuilder(1100);
+
+        for (var i = 0; i < Count; i++)
+        {
+            var left = 1f + i * (BarWidth + Gap);
+            var right = left + BarWidth;
+            var id = $"bar{i}";
+            parts[i] = MotionIconPart.Filled(id, $"M{left} 6A2 2 0 0 1 {right} 6V18A2 2 0 0 1 {left} 18z") with
+            {
+                Origin = new MotionPoint(left + BarWidth / 2, 12f)
+            };
+
+            var steps = Enumerable.Range(0, 4).Select(_ => 0.25 + random.NextDouble() * 0.75).ToList();
+            steps.Add(steps[0]);
+            spec.ScaleY(id, k => k.Evenly(MotionEase.SinInOut, [.. steps]));
+        }
+
+        return new MotionIconDefinition("music-bars", parts, spec.Build());
+    }
+
+    // string.GetHashCode is randomised per process; a track should dance the same way every launch.
     static int StableHash(string s)
     {
         unchecked
@@ -128,6 +154,25 @@ sealed class BarsDrawable : IDrawable
                 hash = hash * 31 + c;
             return hash;
         }
+    }
+}
+
+/// <summary>The music bars while paused: a flat, dimmed line.</summary>
+sealed class PausedBarsDrawable : IDrawable
+{
+    const int Count = 4;
+
+    public Color Fill { get; set; } = Ui.Text;
+
+    public void Draw(ICanvas canvas, RectF rect)
+    {
+        var gap = rect.Width * 0.12f;
+        var bar = (rect.Width - gap * (Count - 1)) / Count;
+        var h = rect.Height * 0.18f;
+
+        canvas.FillColor = this.Fill.WithAlpha(0.45f);
+        for (var i = 0; i < Count; i++)
+            canvas.FillRoundedRectangle(rect.X + i * (bar + gap), rect.Center.Y - h / 2, bar, h, bar / 2);
     }
 }
 
