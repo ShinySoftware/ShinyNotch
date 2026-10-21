@@ -46,8 +46,15 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="../ShinyNotch.Core/ShinyNotch.Core.csproj" />
+    </ItemGroup>
+
+    <!-- Referenced here too, not only through Core: Core is net10.0, so these resolve their macOS
+         assets only when this head asks for them. -->
+    <ItemGroup>
         <PackageReference Include="Shiny.Calendar" Version="6.3.1-beta-0001" />
         <PackageReference Include="Shiny.Core" Version="6.3.1-beta-0001" />
+        <PackageReference Include="Shiny.Extensions.Stores" Version="6.0.1" />
         <PackageReference Include="Shiny.Maui.Controls" Version="2.0.0-beta-0010" />
         <PackageReference Include="Shiny.Maui.Controls.Desktop" Version="2.0.0-beta-0010" />
     </ItemGroup>

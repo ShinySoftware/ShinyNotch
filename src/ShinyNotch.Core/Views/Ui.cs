@@ -1,0 +1,287 @@
+using Microsoft.Maui.Controls.Shapes;
+using ShinyNotch.Platform;
+
+namespace ShinyNotch.Views;
+
+/// <summary>
+/// Small building blocks for the notch's views. Everything in the notch is built in code and rebuilt
+/// whole when its structure changes: the notch window swaps in a fresh page per content, because the
+/// AppKit head never creates native views for children added to a layout after it is on screen.
+/// Values that only change (a clock, a percentage, a meter) are updated in place instead: text on a
+/// label, a symbol's image source, or a <see cref="GraphicsView"/> redrawn.
+/// </summary>
+static class Ui
+{
+    /// <summary>The head's icons, text measuring and hover. Set once at startup, before any view is built.</summary>
+    public static IPlatformUi Platform { get; set; } = null!;
+
+    // Apple's dark-mode system colours, so the notch sits with the rest of macOS.
+    public static readonly Color Text = Colors.White;
+    public static readonly Color Secondary = Color.FromRgba(235, 235, 245, 153);
+    public static readonly Color Tertiary = Color.FromRgba(235, 235, 245, 77);
+    public static readonly Color Surface = Color.FromArgb("#1C1C1E");
+    public static readonly Color Raised = Color.FromArgb("#2C2C2E");
+    public static readonly Color Separator = Color.FromArgb("#38383A");
+
+    public static readonly Color Blue = Color.FromArgb("#0A84FF");
+    public static readonly Color Teal = Color.FromArgb("#64D2FF");
+    public static readonly Color Green = Color.FromArgb("#30D158");
+    public static readonly Color Yellow = Color.FromArgb("#FFD60A");
+    public static readonly Color Orange = Color.FromArgb("#FF9F0A");
+    public static readonly Color Red = Color.FromArgb("#FF453A");
+    public static readonly Color Pink = Color.FromArgb("#FF375F");
+    public static readonly Color Purple = Color.FromArgb("#BF5AF2");
+    public static readonly Color Indigo = Color.FromArgb("#5E5CE6");
+
+    /// <summary>The expanded panel's width. Fixed, so switching tabs only ever changes the height.</summary>
+    public const double PanelWidth = 500;
+
+    /// <summary>The width inside the panel's padding.</summary>
+    public const double ContentWidth = PanelWidth - 28;
+
+    public const double CardRadius = 14;
+
+    public static Label Label(string text, double size = 13, bool bold = false, Color? color = null, double width = -1)
+        => new()
+        {
+            Text = text,
+            FontSize = size,
+            FontAttributes = bold ? FontAttributes.Bold : FontAttributes.None,
+            TextColor = color ?? Text,
+            WidthRequest = width,
+            // A fixed-width label in a wider cell would otherwise be centred in it, out of line with its neighbours.
+            HorizontalOptions = width > 0 ? LayoutOptions.Start : LayoutOptions.Fill,
+            VerticalTextAlignment = TextAlignment.Center,
+            LineBreakMode = LineBreakMode.TailTruncation,
+            MaxLines = 1
+        };
+
+    /// <summary>A small all-caps heading over a group, as in Control Centre.</summary>
+    public static Label Caption(string text, Color? color = null)
+        => Label(text.ToUpperInvariant(), 10, bold: true, color: color ?? Tertiary);
+
+    public static T Centered<T>(this T label) where T : Label
+    {
+        label.HorizontalOptions = LayoutOptions.Center;
+        label.HorizontalTextAlignment = TextAlignment.Center;
+        return label;
+    }
+
+    /// <summary>A rounded, raised surface: the card everything in the panel sits on.</summary>
+    /// <param name="wash">
+    /// A colour washed in from the top-left corner. Drawn by a <see cref="WashDrawable"/> under the content
+    /// (the AppKit head paints no gradient brushes), and clipped to the rounded corners by the Border.
+    /// </param>
+    public static Border Card(View content, Thickness? padding = null, Color? background = null, double radius = CardRadius, Color? wash = null)
+    {
+        var inset = padding ?? new Thickness(12, 10);
+        View body = content;
+        if (wash != null)
+        {
+            content.Margin = inset;
+            body = new Grid
+            {
+                Children =
+                {
+                    new GraphicsView { Drawable = new WashDrawable(wash), InputTransparent = true },
+                    content
+                }
+            };
+        }
+
+        return new Border
+        {
+            StrokeThickness = 0,
+            StrokeShape = new RoundRectangle { CornerRadius = radius },
+            BackgroundColor = background ?? Surface,
+            Padding = wash == null ? inset : 0,
+            Content = body
+        };
+    }
+
+    /// <summary>A pill button: text, an optional symbol before it, filled when selected.</summary>
+    public static View Chip(string text, Action tapped, bool selected = false, Color? tint = null, string? symbol = null)
+    {
+        var fill = selected ? tint ?? Text : Raised;
+        var ink = selected ? Colors.Black : tint ?? Text;
+
+        var row = new HorizontalStackLayout { Spacing = 5, VerticalOptions = LayoutOptions.Center };
+        if (symbol != null)
+            row.Children.Add(Symbol(symbol, 11, ink));
+        row.HorizontalOptions = LayoutOptions.Center;
+        row.Children.Add(new Label
+        {
+            Text = text,
+            FontSize = 12,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = ink,
+            VerticalTextAlignment = TextAlignment.Center
+        });
+
+        var chip = new Border
+        {
+            AutomationId = text,
+            StrokeThickness = 0,
+            StrokeShape = new RoundRectangle { CornerRadius = 13 },
+            BackgroundColor = fill,
+            HeightRequest = 26,
+            Padding = new Thickness(12, 0),
+            Content = row
+        };
+        return chip.Pressable(tapped);
+    }
+
+    /// <summary>
+    /// Makes a surface a button: it lightens while the pointer is over it, and dims for a moment when
+    /// clicked. Nothing reports the press itself, so the click shows as a flash rather than a held-down
+    /// state. Both only change colour and opacity, in place.
+    /// </summary>
+    /// <remarks>
+    /// Hover comes from the head (<see cref="IPlatformUi.TrackHover"/>): on AppKit a PointerGestureRecognizer
+    /// never fires here (dotnet/maui-labs#744).
+    /// </remarks>
+    public static T Pressable<T>(this T button, Action tapped) where T : Border
+    {
+        var rest = button.BackgroundColor ?? Colors.Transparent;
+        var hover = rest.Alpha < 0.05f
+            ? Colors.White.WithAlpha(0.1f)
+            : new Color(rest.Red + (1 - rest.Red) * 0.12f, rest.Green + (1 - rest.Green) * 0.12f, rest.Blue + (1 - rest.Blue) * 0.12f, rest.Alpha);
+
+        Platform.TrackHover(button, over => button.BackgroundColor = over ? hover : rest);
+
+        button.GestureRecognizers.Add(new TapGestureRecognizer
+        {
+            Command = new Command(() =>
+            {
+                button.Opacity = 0.55;
+                button.Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(130), () => button.Opacity = 1);
+                tapped();
+            })
+        });
+        return button;
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // SF Symbols
+    // ---------------------------------------------------------------------------------------------
+
+    static readonly Dictionary<string, ImageSource?> SymbolCache = new();
+
+    /// <summary>
+    /// An icon by SF Symbol name, drawn by the head once and cached, so a rebuild re-uses it. Centred in a
+    /// square of <see cref="SymbolBox"/> points so symbols line up.
+    /// </summary>
+    public static ImageSource SymbolSource(string name, double size, Color? color = null, bool multicolor = false, bool bold = false)
+    {
+        var ink = color ?? Text;
+        var key = $"{name}|{size}|{ink.ToArgbHex(true)}|{multicolor}|{bold}";
+        if (!SymbolCache.TryGetValue(key, out var source))
+        {
+            source = Platform.Symbol(name, size, ink, multicolor, bold);
+            SymbolCache[key] = source;
+        }
+        return source ?? new FileImageSource();
+    }
+
+    public static double SymbolBox(double size) => Math.Ceiling(size * 1.3);
+
+    public static Image Symbol(string name, double size, Color? color = null, bool multicolor = false, bool bold = false)
+    {
+        var box = SymbolBox(size);
+        var image = new Image
+        {
+            WidthRequest = box,
+            HeightRequest = box,
+            Aspect = Aspect.AspectFit,
+            VerticalOptions = LayoutOptions.Center
+        };
+        if (bold)
+            image.Source = SymbolSource(name, size, color, multicolor, bold);
+        else
+            image.SetSymbol(name, size, color, multicolor);
+        return image;
+    }
+
+    /// <summary>A tappable symbol, with room around it to hit. Native buttons draw their own bezel.</summary>
+    public static Border SymbolButton(string name, Action tapped, double size = 15, Color? color = null, string? hint = null, Color? background = null, Thickness? padding = null)
+    {
+        var button = new Border
+        {
+            StrokeThickness = 0,
+            StrokeShape = new RoundRectangle { CornerRadius = 8 },
+            BackgroundColor = background ?? Colors.Transparent,
+            Padding = padding ?? new Thickness(5),
+            VerticalOptions = LayoutOptions.Center,
+            Content = Symbol(name, size, color)
+        };
+        if (hint != null)
+        {
+            SemanticProperties.SetDescription(button, hint);
+            button.AutomationId = hint;
+        }
+        return button.Pressable(tapped);
+    }
+
+    /// <summary>Swaps the symbol inside a <see cref="SymbolButton"/> in place.</summary>
+    public static void SetSymbol(this Border button, string name, double size, Color? color = null)
+    {
+        if (button.Content is Image image)
+            image.SetSymbol(name, size, color);
+    }
+
+    /// <summary>
+    /// Swaps an image's symbol in place - and does nothing when it is already showing that one, so a
+    /// view that ticks can call this every time without the image decoding again.
+    /// </summary>
+    public static void SetSymbol(this Image image, string name, double size, Color? color = null, bool multicolor = false)
+    {
+        var key = $"{name}|{size}|{(color ?? Text).ToArgbHex(true)}|{multicolor}";
+        if (image.StyleId == key)
+            return;
+        image.StyleId = key;
+        image.Source = SymbolSource(name, size, color, multicolor);
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Artwork
+    // ---------------------------------------------------------------------------------------------
+
+    /// <summary>Album art (or a placeholder note) in a rounded square.</summary>
+    public static Border Artwork(byte[]? bytes, double size, double radius)
+    {
+        View content = bytes != null
+            ? new Image
+            {
+                Source = ImageSource.FromStream(() => new MemoryStream(bytes)),
+                WidthRequest = size,
+                HeightRequest = size,
+                Aspect = Aspect.AspectFill
+            }
+            : Symbol("music.note", size * 0.4, Tertiary);
+
+        return new Border
+        {
+            StrokeThickness = 0,
+            StrokeShape = new RoundRectangle { CornerRadius = radius },
+            BackgroundColor = Raised,
+            WidthRequest = size,
+            HeightRequest = size,
+            Content = content
+        };
+    }
+
+    public static T At<T>(this T view, int row = 0, int column = 0, int rowSpan = 1, int columnSpan = 1) where T : View
+    {
+        Grid.SetRow(view, row);
+        Grid.SetColumn(view, column);
+        Grid.SetRowSpan(view, rowSpan);
+        Grid.SetColumnSpan(view, columnSpan);
+        return view;
+    }
+}
+
+/// <summary>A view that refreshes in place while it is in the notch.</summary>
+interface ILiveView
+{
+    void Tick();
+}

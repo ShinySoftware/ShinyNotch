@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <!-- The GTK 4 head. A plain net10.0 app, not UseMaui: the Linux platform package brings its own
+         MAUI hosting. Everything shared is in Core; this supplies the Platform implementations. -->
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <OutputType>Exe</OutputType>
+        <IsPackable>false</IsPackable>
+        <RootNamespace>ShinyNotch</RootNamespace>
+        <AssemblyName>ShinyNotch.Linux</AssemblyName>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- What UseMaui would have made global. -->
+        <Using Include="Microsoft.Maui" />
+        <Using Include="Microsoft.Maui.Controls" />
+        <Using Include="Microsoft.Maui.Dispatching" />
+        <Using Include="Microsoft.Maui.Graphics" />
+        <Using Include="Microsoft.Maui.Hosting" />
+        <Using Include="Microsoft.Extensions.DependencyInjection" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../ShinyNotch.Core/ShinyNotch.Core.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.100" />
+        <PackageReference Include="Microsoft.Maui.Platforms.Linux.Gtk4" Version="0.1.0-preview.13.26514.2" />
+        <PackageReference Include="Microsoft.Maui.Platforms.Linux.Gtk4.Essentials" Version="0.1.0-preview.13.26514.2" />
+        <!-- MPRIS, logind and GeoClue are all D-Bus. -->
+        <PackageReference Include="Tmds.DBus.Protocol" Version="0.94.1" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+        <PackageReference Include="Microsoft.Maui.DevFlow.Agent.Gtk" Version="0.1.0-preview.13.26514.2" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Shiny.Calendar" Version="6.3.1-beta-0001" />
+        <PackageReference Include="Shiny.Core" Version="6.3.1-beta-0001" />
+        <PackageReference Include="Shiny.Extensions.Stores" Version="6.0.1" />
+        <PackageReference Include="Shiny.Maui.Controls" Version="2.0.0-beta-0010" />
+        <PackageReference Include="Shiny.Maui.Controls.Desktop" Version="2.0.0-beta-0010" />
+    </ItemGroup>
+</Project>

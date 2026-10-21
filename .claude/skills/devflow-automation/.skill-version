@@ -1,0 +1,10 @@
+{
+  "contentHash": "3cfebb71430d2068be631b6cb87a2e28b7a40200ebd121f01a237ed801a0dd11",
+  "resolvedCommit": "3b8bfb1f42228b9dd1ee956eb9b7feb9a5495258",
+  "name": "devflow-automation",
+  "commit": "a90865a2da0513b3f16c5317e455af7c12566d5c",
+  "branch": "main",
+  "updatedAt": "2026-10-21T20:15:01.9730110Z",
+  "source": "dotnet/maui-labs",
+  "pluginPath": "plugins/dotnet-maui-tooling/skills/devflow-automation"
+}

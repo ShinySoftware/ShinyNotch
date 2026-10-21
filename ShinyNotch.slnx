@@ -1,3 +1,6 @@
 <Solution>
+  <Project Path="src/ShinyNotch.Core/ShinyNotch.Core.csproj" />
   <Project Path="src/ShinyNotch/ShinyNotch.csproj" />
+  <Project Path="src/ShinyNotch.Linux/ShinyNotch.Linux.csproj" />
+  <Project Path="src/ShinyNotch.Windows/ShinyNotch.Windows.csproj" />
 </Solution>

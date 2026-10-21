@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+        <!-- Lets the head be compile-checked off Windows: -t:Compile stops before MakePri, which only runs on Windows. -->
+        <EnableWindowsTargeting>true</EnableWindowsTargeting>
+        <OutputType>WinExe</OutputType>
+        <UseMaui>true</UseMaui>
+        <SingleProject>true</SingleProject>
+        <IsPackable>false</IsPackable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <RootNamespace>ShinyNotch</RootNamespace>
+        <AssemblyName>ShinyNotch.Windows</AssemblyName>
+
+        <ApplicationTitle>Shiny Notch</ApplicationTitle>
+        <ApplicationId>net.shiny.notch</ApplicationId>
+        <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+        <ApplicationVersion>1</ApplicationVersion>
+
+        <!-- Unpackaged: a plain exe, started at login through the Run key rather than an MSIX startup task. -->
+        <WindowsPackageType>None</WindowsPackageType>
+        <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+        <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <MauiIcon Include="../ShinyNotch/Resources/AppIcon/appicon.png" Link="Resources/AppIcon/appicon.png" Color="#000000" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.100" />
+        <!-- Brightness lives in WMI, GPU load in the performance counters, display changes in SystemEvents. -->
+        <PackageReference Include="System.Management" Version="10.0.7" />
+        <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="10.0.7" />
+        <PackageReference Include="Microsoft.Win32.SystemEvents" Version="10.0.7" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../ShinyNotch.Core/ShinyNotch.Core.csproj" />
+    </ItemGroup>
+
+    <!-- Referenced here too, not only through Core: Core is net10.0, so these resolve their Windows
+         assets only when this head asks for them. -->
+    <ItemGroup>
+        <PackageReference Include="Shiny.Calendar" Version="6.3.1-beta-0001" />
+        <PackageReference Include="Shiny.Core" Version="6.3.1-beta-0001" />
+        <PackageReference Include="Shiny.Extensions.Stores" Version="6.0.1" />
+        <PackageReference Include="Shiny.Maui.Controls" Version="2.0.0-beta-0010" />
+        <PackageReference Include="Shiny.Maui.Controls.Desktop" Version="2.0.0-beta-0010" />
+    </ItemGroup>
+</Project>

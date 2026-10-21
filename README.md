@@ -4,7 +4,7 @@
 
 # Shiny Notch
 
-A menu-bar app for macOS that turns the MacBook camera notch into a live panel. It's built with .NET MAUI on the AppKit head ([maui-labs](https://github.com/dotnet/maui-labs)) and Shiny Controls' `NotchView` / `INotchWindowService`.
+A macOS app that turns the MacBook camera notch into a live panel. It's built with .NET MAUI on the AppKit head ([maui-labs](https://github.com/dotnet/maui-labs)) and Shiny Controls' `NotchView` / `INotchWindowService`.
 
 Hover the notch to open it, and move away to let it fold back into the camera. Apple silicon only.
 
@@ -91,9 +91,9 @@ Changes from the keys or Control Centre flash in the notch.
 
 ### And
 - **Pin** (⦿) keeps the panel open.
-- **Open at login**, from the menu-bar menu (a checkmark) or Settings. The first time, macOS usually asks you to approve it in System Settings ▸ General ▸ Login Items; the app says so and opens that page. If you turn it off there later, the app shows that too, rather than a switch that's lying.
-- **Settings** (⚙ in the panel, or the menu-bar icon) holds the teleprompter script, weather places and units, the HUD toggles, permissions and open at login.
-- It's an agent app (`LSUIElement`) with no Dock icon; quit it from the menu-bar icon.
+- **Open at login** is turned on the first time the app runs, and after that it's yours to change in Settings. If macOS asks you to approve it in System Settings ▸ General ▸ Login Items, Settings says so and opens that page. If you turn it off there later, Settings shows that too, rather than a switch that's lying.
+- **Settings** (⚙ in the panel) holds the notch size, the teleprompter script, weather places and units, the HUD toggles, permissions and open at login.
+- It's an agent app (`LSUIElement`) with no Dock or menu-bar icon. To get back to Settings when the notch isn't handy, open Shiny Notch again (from Finder, Spotlight or Launchpad) while it's running. Quit it from Settings.
 
 ## Build and run
 
@@ -130,8 +130,8 @@ rsvg-convert -w 1024 -h 1024 src/ShinyNotch/Resources/AppIcon/appicon.svg -o src
 | [Microsoft.Maui.Platforms.MacOS.Essentials](https://github.com/dotnet/maui-labs) | 0.1.0-preview.13 | MAUI Essentials for the AppKit head |
 | [Shiny.Core](https://www.nuget.org/packages/Shiny.Core) | 6.3.1-beta-0001 | `IAppStartupInstaller`: open at login (an `SMAppService` login item), with the approval and turned-off states |
 | [Shiny.Calendar](https://www.nuget.org/packages/Shiny.Calendar) | 6.3.1-beta-0001 | The Calendar tab and the meeting peek: calendars and today's and tomorrow's events, with permissions through Shiny.Core |
-| [Shiny.Maui.Controls](https://www.nuget.org/packages/Shiny.Maui.Controls) | 1.9.0-beta-0004 | `NotchView`, the surface that morphs to fit its content |
-| [Shiny.Maui.Controls.Desktop](https://www.nuget.org/packages/Shiny.Maui.Controls.Desktop) | 1.9.0-beta-0004 | `INotchWindowService` (the notch window, hover tracking, camera cut-out size), the menu-bar tray icon, and window-level file drop |
+| [Shiny.Maui.Controls](https://www.nuget.org/packages/Shiny.Maui.Controls) | 2.0.0-beta-0010 | `NotchView`, the surface that morphs to fit its content; `MotionIconView` for the music bars; `TableView` for Settings |
+| [Shiny.Maui.Controls.Desktop](https://www.nuget.org/packages/Shiny.Maui.Controls.Desktop) | 2.0.0-beta-0010 | `INotchWindowService` (the notch window, hover tracking, camera cut-out size) and window-level file drop |
 | [Microsoft.Maui.DevFlow.Agent](https://github.com/dotnet/maui-labs) | 0.1.0-preview.13 | Debug builds only: UI inspection and automation |
 
 | Apple framework / service | Used for |
@@ -172,12 +172,12 @@ rsvg-convert -w 1024 -h 1024 src/ShinyNotch/Resources/AppIcon/appicon.svg -o src
 
 ## Built on Shiny open source
 
-Shiny Notch is a showcase for **[Shiny .NET](https://www.shinylib.net)**, the free, MIT-licensed family of libraries for .NET MAUI, Blazor, ASP.NET Core and native apps that ShinySoft Technologies maintains. They supply the device, background, data and UI layers so an app can concentrate on what it does. The notch itself, the menu-bar icon, open at login and the calendar all come from Shiny packages anyone can use in their own apps.
+Shiny Notch is a showcase for **[Shiny .NET](https://www.shinylib.net)**, the free, MIT-licensed family of libraries for .NET MAUI, Blazor, ASP.NET Core and native apps that ShinySoft Technologies maintains. They supply the device, background, data and UI layers so an app can concentrate on what it does. The notch itself, the music bars, the settings page, open at login and the calendar all come from Shiny packages anyone can use in their own apps.
 
 | Shiny library | What Shiny Notch uses it for | Docs | Source |
 |---|---|---|---|
 | **Shiny.Maui.Controls** | `NotchView`: the black surface that grows out of the camera housing and morphs to fit the peek, the panel and the HUD | [shinylib.net/controls](https://www.shinylib.net/controls/) | [shinyorg/controls](https://github.com/shinyorg/controls) |
-| **Shiny.Maui.Controls.Desktop** | `INotchWindowService` (the borderless notch window, hover tracking and the camera cut-out's size), the menu-bar tray icon, and file drop onto the tray | [Desktop controls](https://www.shinylib.net/controls/trayicon/) | [shinyorg/controls](https://github.com/shinyorg/controls) |
+| **Shiny.Maui.Controls.Desktop** | `INotchWindowService` (the borderless notch window, hover tracking and the camera cut-out's size), and file drop onto the tray | [Desktop controls](https://www.shinylib.net/controls/) | [shinyorg/controls](https://github.com/shinyorg/controls) |
 | **Shiny.Core** | Hosting and DI, platform permissions, and `IAppStartupInstaller` for open at login | [Core](https://www.shinylib.net/client/core/) | [shinyorg/shiny](https://github.com/shinyorg/shiny) |
 | **Shiny.Calendar** | Every calendar you have, and the events in the Calendar tab and the "meeting soon" peek | [Calendar](https://www.shinylib.net/client/calendarstore/) | [shinyorg/shiny](https://github.com/shinyorg/shiny) |
 
