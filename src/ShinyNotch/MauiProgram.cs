@@ -46,6 +46,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<FileTrayService>();
         builder.Services.AddSingleton<TeleprompterService>();
         builder.Services.AddSingleton<WeatherService>();
+        builder.Services.AddSingleton<MacShotService>();
         builder.Services.AddSingleton<NotchController>();
         builder.Services.AddTransient<SettingsPage>();
 

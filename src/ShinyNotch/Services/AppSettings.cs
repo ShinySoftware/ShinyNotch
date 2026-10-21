@@ -47,6 +47,13 @@ public sealed class AppSettings
         set => this.Set(nameof(this.ShowBrightnessHud), NSNumber.FromBoolean(value));
     }
 
+    /// <summary>The macshot tab, when macshot is installed. Without macshot there's no tab either way.</summary>
+    public bool ShowMacShotTab
+    {
+        get => this.Bool(nameof(this.ShowMacShotTab), true);
+        set => this.Set(nameof(this.ShowMacShotTab), NSNumber.FromBoolean(value));
+    }
+
     /// <summary>Paths in the file tray, in the order they were dropped.</summary>
     public IReadOnlyList<string> TrayFiles
     {

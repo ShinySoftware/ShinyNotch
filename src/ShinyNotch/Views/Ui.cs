@@ -127,8 +127,50 @@ static class Ui
             Padding = new Thickness(12, 0),
             Content = row
         };
-        chip.GestureRecognizers.Add(new TapGestureRecognizer { Command = new Command(tapped) });
-        return chip;
+        return chip.Pressable(tapped);
+    }
+
+    /// <summary>
+    /// Makes a surface a button: it lightens while the pointer is over it, and dims for a moment when
+    /// clicked. Nothing reports the press itself, so the click shows as a flash rather than a held-down
+    /// state. Both only change colour and opacity, in place.
+    /// </summary>
+    /// <remarks>
+    /// Hover comes from a tracking area of our own on the native view, not a PointerGestureRecognizer:
+    /// the AppKit head only forwards pointer events from its container views (a Border's view isn't one),
+    /// and only in the key window, which the notch never is (dotnet/maui-labs#744).
+    /// </remarks>
+    public static T Pressable<T>(this T button, Action tapped) where T : Border
+    {
+        var rest = button.BackgroundColor ?? Colors.Transparent;
+        var hover = rest.Alpha < 0.05f
+            ? Colors.White.WithAlpha(0.1f)
+            : new Color(rest.Red + (1 - rest.Red) * 0.12f, rest.Green + (1 - rest.Green) * 0.12f, rest.Blue + (1 - rest.Blue) * 0.12f, rest.Alpha);
+
+        // Captured by the button's HandlerChanged handler, so it lives as long as the button: a tracking
+        // area doesn't retain its owner.
+        var tracker = new HoverTracker(over => button.BackgroundColor = over ? hover : rest);
+        button.HandlerChanged += (_, _) =>
+        {
+            if (button.Handler?.PlatformView is NSView view)
+                view.AddTrackingArea(new NSTrackingArea(
+                    CGRect.Empty,
+                    NSTrackingAreaOptions.MouseEnteredAndExited | NSTrackingAreaOptions.MouseMoved |
+                    NSTrackingAreaOptions.ActiveAlways | NSTrackingAreaOptions.InVisibleRect,
+                    tracker,
+                    null));
+        };
+
+        button.GestureRecognizers.Add(new TapGestureRecognizer
+        {
+            Command = new Command(() =>
+            {
+                button.Opacity = 0.55;
+                button.Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(130), () => button.Opacity = 1);
+                tapped();
+            })
+        });
+        return button;
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -189,8 +231,7 @@ static class Ui
             SemanticProperties.SetDescription(button, hint);
             button.AutomationId = hint;
         }
-        button.GestureRecognizers.Add(new TapGestureRecognizer { Command = new Command(tapped) });
-        return button;
+        return button.Pressable(tapped);
     }
 
     /// <summary>Swaps the symbol inside a <see cref="SymbolButton"/> in place.</summary>
@@ -292,6 +333,29 @@ static class Ui
         Grid.SetRowSpan(view, rowSpan);
         Grid.SetColumnSpan(view, columnSpan);
         return view;
+    }
+}
+
+/// <summary>
+/// Receives a tracking area's enter and exit. Moves count as being over too: a view built under a pointer
+/// that is already there gets no enter, which is every rebuild after a click.
+/// </summary>
+sealed class HoverTracker(Action<bool> changed) : NSResponder
+{
+    bool over;
+
+    public override void MouseEntered(NSEvent theEvent) => this.Set(true);
+
+    public override void MouseExited(NSEvent theEvent) => this.Set(false);
+
+    public override void MouseMoved(NSEvent theEvent) => this.Set(true);
+
+    void Set(bool value)
+    {
+        if (value == this.over)
+            return;
+        this.over = value;
+        changed(value);
     }
 }
 

@@ -43,6 +43,8 @@ public sealed class NotchController
     static readonly TimeSpan CalendarRefreshEvery = TimeSpan.FromMinutes(15);
     /// <summary>A display change arrives as a burst of notifications; act once it settles.</summary>
     static readonly TimeSpan ScreensSettleDelay = TimeSpan.FromMilliseconds(400);
+    /// <summary>Time for the panel to fold back to the peek, so a capture doesn't have the notch in it.</summary>
+    static readonly TimeSpan MacShotHandOffDelay = TimeSpan.FromMilliseconds(250);
 
     readonly INotchWindowService notch;
     readonly IFileDropService fileDrop;
@@ -55,6 +57,7 @@ public sealed class NotchController
     readonly FileTrayService tray;
     readonly TeleprompterService prompter;
     readonly WeatherService weather;
+    readonly MacShotService macshot;
     readonly IDispatcher dispatcher;
     readonly TimeProvider time;
 
@@ -87,6 +90,7 @@ public sealed class NotchController
         FileTrayService tray,
         TeleprompterService prompter,
         WeatherService weather,
+        MacShotService macshot,
         IDispatcher dispatcher,
         TimeProvider time)
     {
@@ -101,6 +105,7 @@ public sealed class NotchController
         this.tray = tray;
         this.prompter = prompter;
         this.weather = weather;
+        this.macshot = macshot;
         this.dispatcher = dispatcher;
         this.time = time;
         this.tab = Enum.TryParse<NotchTab>(settings.LastTab, out var t) ? t : NotchTab.Media;
@@ -108,6 +113,9 @@ public sealed class NotchController
 
     /// <summary>Opens Settings. Set by the app, which owns the window.</summary>
     public Action? OpenSettings { get; set; }
+
+    /// <summary>The Capture tab is in the strip: macshot is installed and its tab is turned on.</summary>
+    bool ShowCapture => this.settings.ShowMacShotTab && this.macshot.IsInstalled;
 
     /// <summary>The notch should stay open even when the pointer leaves.</summary>
     bool IsPinned => this.pinnedByUser || this.dragging || this.prompter.IsRunning;
@@ -174,6 +182,7 @@ public sealed class NotchController
         };
         this.controls.ChangedExternally += (_, kind) => this.ShowHud(kind);
         this.weather.Changed += (_, _) => this.Rebuild(NotchTab.Weather);
+        this.macshot.Changed += (_, _) => this.Rebuild(NotchTab.Capture);
         this.screensObserver = NSNotificationCenter.DefaultCenter.AddObserver(
             NSApplication.DidChangeScreenParametersNotification,
             _ => this.OnScreensChanged()
@@ -183,6 +192,14 @@ public sealed class NotchController
         {
             if (key is nameof(AppSettings.TeleprompterScript) or nameof(AppSettings.TeleprompterFontSize))
                 this.Rebuild(NotchTab.Prompter);
+            // The tab strip changes. Turned off while showing it, the panel moves to Now Playing.
+            else if (key is nameof(AppSettings.ShowMacShotTab) && this.mode == Mode.Panel)
+            {
+                if (this.tab == NotchTab.Capture && !this.ShowCapture)
+                    this.Open(NotchTab.Media);
+                else
+                    _ = this.RenderAsync();
+            }
         };
 
         this.media.Start();
@@ -272,6 +289,14 @@ public sealed class NotchController
 
     void Open(NotchTab tab)
     {
+        // macshot was uninstalled, or its tab turned off, since the Capture tab was last open.
+        if (tab == NotchTab.Capture && !this.ShowCapture)
+            tab = NotchTab.Media;
+        if (tab == NotchTab.Capture)
+        {
+            this.macshot.Start();
+            this.macshot.CheckRecording();
+        }
         this.tab = tab;
         this.settings.LastTab = tab.ToString();
         if (tab == NotchTab.Weather)
@@ -423,12 +448,24 @@ public sealed class NotchController
             NotchTab.Stats => new StatsTab(this.stats),
             NotchTab.Calendar => new CalendarTab(this.calendar, this.time, () => _ = this.RenderAsync()),
             NotchTab.Timer => new TimerTab(this.countdown),
+            NotchTab.Capture => new CaptureTab(this.macshot, this.RunMacShot),
             _ => new PrompterTab(this.prompter, () => this.OpenSettings?.Invoke())
         };
 
         var cutout = this.notch.HardwareNotchSize;
         var controls = new ControlsBar(this.media, this.controls, showPlay: this.tab != NotchTab.Media);
-        return new PanelView(this.tab, body, controls, cutout.Width, Math.Max(cutout.Height, 32), this.pinnedByUser, this.Open, this.TogglePin, () => this.OpenSettings?.Invoke());
+        return new PanelView(this.tab, body, controls, cutout.Width, Math.Max(cutout.Height, 32), this.pinnedByUser, this.ShowCapture, this.Open, this.TogglePin, () => this.OpenSettings?.Invoke());
+    }
+
+    /// <summary>
+    /// Hands an action to macshot. The panel folds away first, pinned or not: a capture would have it in
+    /// the shot, and macshot's own windows (editor, history, settings) open where it was.
+    /// </summary>
+    void RunMacShot(string action)
+    {
+        this.pinnedByUser = false;
+        this.Show(Mode.Peek);
+        this.dispatcher.DispatchDelayed(MacShotHandOffDelay, () => MacShotService.Run(action));
     }
 
     TrayTab BuildTray()
@@ -459,7 +496,7 @@ public sealed class NotchController
 
     /// <summary>
     /// Something on screen counts seconds: a running countdown (the peek and the Timer tab show it), the
-    /// player's position, or the Stats tab's sampling. Everything else changes by the minute at most.
+    /// player's position, the Stats tab's sampling, or the Capture tab watching for a recording. Everything else changes by the minute at most.
     /// </summary>
     bool NeedsSeconds =>
         this.countdown.IsRunning ||
@@ -467,6 +504,8 @@ public sealed class NotchController
         {
             NotchTab.Media => this.media.Current?.IsPlaying == true,
             NotchTab.Stats => true,
+            // Watching for a macshot recording to start or end, so Stop comes and goes with it.
+            NotchTab.Capture => true,
             _ => false
         });
 
@@ -511,6 +550,9 @@ public sealed class NotchController
             this.nextWeatherCheck = now + WeatherCheckEvery;
             _ = this.weather.RefreshAsync();
         }
+
+        if (this.mode == Mode.Panel && this.tab == NotchTab.Capture)
+            this.macshot.CheckRecording();
 
         this.live?.Tick();
 
