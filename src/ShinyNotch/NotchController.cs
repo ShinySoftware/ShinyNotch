@@ -1,3 +1,5 @@
+using AppKit;
+using Foundation;
 using Shiny.Maui.Controls;
 using Shiny.Maui.Controls.Desktop.FileDrop;
 using Shiny.Maui.Controls.Desktop.Notch;
@@ -39,6 +41,8 @@ public sealed class NotchController
     static readonly TimeSpan WeatherCheckEvery = TimeSpan.FromMinutes(5);
     /// <summary>The store says when events change; this only catches the day moving on.</summary>
     static readonly TimeSpan CalendarRefreshEvery = TimeSpan.FromMinutes(15);
+    /// <summary>A display change arrives as a burst of notifications; act once it settles.</summary>
+    static readonly TimeSpan ScreensSettleDelay = TimeSpan.FromMilliseconds(400);
 
     readonly INotchWindowService notch;
     readonly IFileDropService fileDrop;
@@ -68,6 +72,8 @@ public sealed class NotchController
     DateTimeOffset nextCalendarRefresh;
     DateTimeOffset nextWeatherCheck;
     int tickToken;
+    int screensToken;
+    NSObject? screensObserver;
 
     public NotchController(
         INotchWindowService notch,
@@ -168,6 +174,10 @@ public sealed class NotchController
         };
         this.controls.ChangedExternally += (_, kind) => this.ShowHud(kind);
         this.weather.Changed += (_, _) => this.Rebuild(NotchTab.Weather);
+        this.screensObserver = NSNotificationCenter.DefaultCenter.AddObserver(
+            NSApplication.DidChangeScreenParametersNotification,
+            _ => this.OnScreensChanged()
+        );
         // Only the settings the Prompter tab draws with; the speed (say) changes nothing on screen.
         this.settings.Changed += (_, key) =>
         {
@@ -189,6 +199,26 @@ public sealed class NotchController
     }
 
     static bool IsNotchWindow(Window? window) => window?.Title == "Notch";
+
+    /// <summary>
+    /// A display was plugged in, removed or rescaled. The notch service only places its window (and reads
+    /// the camera cut-out) when content changes, so the window would keep its old global frame - which,
+    /// once the primary display changes, is somewhere in the middle of a screen. Re-render so the content
+    /// and the service pick up the new cut-out, then show again to snap the window to its new spot.
+    /// </summary>
+    void OnScreensChanged()
+    {
+        var token = ++this.screensToken;
+        this.dispatcher.DispatchDelayed(ScreensSettleDelay, async () =>
+        {
+            if (token != this.screensToken)
+                return;
+
+            this.shownKey = null;
+            await this.RenderAsync();
+            await this.notch.ShowAsync();
+        });
+    }
 
     // ---------------------------------------------------------------------------------------------
     // Hover
