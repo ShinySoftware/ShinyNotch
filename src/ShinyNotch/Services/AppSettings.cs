@@ -35,6 +35,44 @@ public sealed class AppSettings
         set => this.Set(nameof(this.UseHardwareNotch), NSNumber.FromBoolean(value));
     }
 
+    public const double MaxNotchWingWidth = 160;
+    public const double DefaultNotchWingWidth = 84;
+    public const double MaxNotchExtraHeight = 24;
+
+    /// <summary>
+    /// How far the collapsed notch reaches out left of the camera, in points; 0 is the camera's own edge.
+    /// A wish, not a promise: a wing never goes narrower than what it is showing needs.
+    /// </summary>
+    public double NotchLeftWidth
+    {
+        get => this.Double(nameof(this.NotchLeftWidth), DefaultNotchWingWidth);
+        set => this.Set(nameof(this.NotchLeftWidth), NSNumber.FromDouble(Math.Clamp(Math.Round(value), 0, MaxNotchWingWidth)));
+    }
+
+    /// <summary>As <see cref="NotchLeftWidth"/>, right of the camera.</summary>
+    public double NotchRightWidth
+    {
+        get => this.Double(nameof(this.NotchRightWidth), DefaultNotchWingWidth);
+        set => this.Set(nameof(this.NotchRightWidth), NSNumber.FromDouble(Math.Clamp(Math.Round(value), 0, MaxNotchWingWidth)));
+    }
+
+    /// <summary>
+    /// Both wings the same width, so the camera stays centred: one slider in Settings, and the wider of
+    /// the two wings' content sets both.
+    /// </summary>
+    public bool NotchWidthsLocked
+    {
+        get => this.Bool(nameof(this.NotchWidthsLocked), true);
+        set => this.Set(nameof(this.NotchWidthsLocked), NSNumber.FromBoolean(value));
+    }
+
+    /// <summary>Points the collapsed notch hangs below the camera. At 0 it is exactly the camera's height.</summary>
+    public double NotchExtraHeight
+    {
+        get => this.Double(nameof(this.NotchExtraHeight), 0);
+        set => this.Set(nameof(this.NotchExtraHeight), NSNumber.FromDouble(Math.Clamp(Math.Round(value), 0, MaxNotchExtraHeight)));
+    }
+
     public bool ShowVolumeHud
     {
         get => this.Bool(nameof(this.ShowVolumeHud), true);

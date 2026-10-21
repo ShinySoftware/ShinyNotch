@@ -9,6 +9,8 @@ namespace ShinyNotch.Views;
 sealed class HudView : Grid, ILiveView
 {
     const double IconSize = 14;
+    /// <summary>The meter and percentage, and the room either side of them.</summary>
+    const double MeterWingWidth = 132;
 
     readonly SystemControlsService controls;
     readonly Image icon;
@@ -18,19 +20,17 @@ sealed class HudView : Grid, ILiveView
 
     public HudKind Kind { get; private set; }
 
-    public HudView(HudKind kind, double cutoutWidth, double height, SystemControlsService controls)
+    /// <param name="leftWish">The peek's wing widths, so the notch keeps its size; the meter side may need more.</param>
+    public HudView(HudKind kind, double cutoutWidth, double leftWish, double rightWish, bool locked, double height, SystemControlsService controls)
     {
         this.controls = controls;
         this.HeightRequest = height;
-        this.ColumnDefinitions =
-        [
-            new ColumnDefinition(72),
-            new ColumnDefinition(Math.Max(cutoutWidth, 8)),
-            new ColumnDefinition(120)
-        ];
+        var (left, right) = PeekView.Widths(leftWish, rightWish, locked, PeekView.EdgeGap + IconSize + 6, MeterWingWidth);
+        var (leftInset, rightInset) = PeekView.Lay(this, cutoutWidth, left, right);
 
         this.icon = Ui.Symbol("speaker.wave.2.fill", IconSize);
         this.icon.HorizontalOptions = LayoutOptions.Start;
+        this.icon.Margin = new Thickness(leftInset + PeekView.EdgeGap, 0, 0, 0);
         this.meter = Drawing.View(this.bar, 84, 5);
         this.percent = Ui.Label("", 11, bold: true, width: 28);
         this.percent.HorizontalTextAlignment = TextAlignment.End;
@@ -40,6 +40,7 @@ sealed class HudView : Grid, ILiveView
         {
             Spacing = 8,
             HorizontalOptions = LayoutOptions.End,
+            Margin = new Thickness(0, 0, rightInset + PeekView.EdgeGap, 0),
             VerticalOptions = LayoutOptions.Center,
             Children = { this.meter, this.percent }
         }.At(column: 2));

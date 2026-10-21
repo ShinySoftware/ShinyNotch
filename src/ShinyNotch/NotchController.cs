@@ -45,6 +45,8 @@ public sealed class NotchController
     static readonly TimeSpan ScreensSettleDelay = TimeSpan.FromMilliseconds(400);
     /// <summary>Time for the panel to fold back to the peek, so a capture doesn't have the notch in it.</summary>
     static readonly TimeSpan MacShotHandOffDelay = TimeSpan.FromMilliseconds(250);
+    /// <summary>How long the notch stays out, even with nothing to show, after its size is changed in Settings.</summary>
+    static readonly TimeSpan SizePreviewHold = TimeSpan.FromSeconds(2.5);
 
     readonly INotchWindowService notch;
     readonly IFileDropService fileDrop;
@@ -76,6 +78,8 @@ public sealed class NotchController
     DateTimeOffset nextWeatherCheck;
     int tickToken;
     int screensToken;
+    int previewToken;
+    bool previewingSize;
     NSObject? screensObserver;
 
     public NotchController(
@@ -200,6 +204,8 @@ public sealed class NotchController
                 else
                     _ = this.RenderAsync();
             }
+            else if (key is nameof(AppSettings.NotchLeftWidth) or nameof(AppSettings.NotchRightWidth) or nameof(AppSettings.NotchWidthsLocked) or nameof(AppSettings.NotchExtraHeight))
+                this.PreviewSize();
         };
 
         this.media.Start();
@@ -236,6 +242,35 @@ public sealed class NotchController
             await this.notch.ShowAsync();
         });
     }
+
+    /// <summary>
+    /// A size slider moved. The peek is what it sizes, so it is re-rendered (and held out for a moment
+    /// even when empty, or there would be nothing to watch). The panel picks the new size up on closing.
+    /// </summary>
+    void PreviewSize()
+    {
+        var token = ++this.previewToken;
+        this.previewingSize = true;
+        if (this.mode == Mode.Peek)
+            _ = this.RenderAsync();
+
+        this.dispatcher.DispatchDelayed(SizePreviewHold, () =>
+        {
+            if (token != this.previewToken)
+                return;
+            this.previewingSize = false;
+            if (this.mode == Mode.Peek)
+                _ = this.RenderAsync();
+        });
+    }
+
+    /// <summary>
+    /// The collapsed notch's height: exactly the camera's, plus whatever was asked for in Settings. With no
+    /// camera notch (an external display), a menu bar's height.
+    /// </summary>
+    double PeekHeight => (this.notch.HardwareNotchSize.Height is > 0 and var h ? h : 32) + this.settings.NotchExtraHeight;
+
+    string SizeKey => $"{this.settings.NotchLeftWidth}|{this.settings.NotchRightWidth}|{this.settings.NotchWidthsLocked}|{this.settings.NotchExtraHeight}";
 
     // ---------------------------------------------------------------------------------------------
     // Hover
@@ -365,8 +400,8 @@ public sealed class NotchController
 
     string Key() => this.mode switch
     {
-        Mode.Peek => $"peek|{this.media.Current?.TrackKey}|{this.media.Current?.IsPlaying}|{this.media.Artwork?.Length}|{this.countdown.IsActive}|{this.countdown.IsPaused}|{this.calendar.StartingWithin(TimeSpan.FromMinutes(15))?.Title}|{this.weather.Selected?.Temperature:0}|{this.weather.Selected?.Code}",
-        Mode.Hud => "hud",
+        Mode.Peek => $"peek|{this.SizeKey}|{this.previewingSize}|{this.media.Current?.TrackKey}|{this.media.Current?.IsPlaying}|{this.media.Artwork?.Length}|{this.countdown.IsActive}|{this.countdown.IsPaused}|{this.calendar.StartingWithin(TimeSpan.FromMinutes(15))?.Title}|{this.weather.Selected?.Temperature:0}|{this.weather.Selected?.Code}",
+        Mode.Hud => $"hud|{this.SizeKey}",
         // Panels are rebuilt on every structural change, and those are rare.
         _ => $"panel|{this.tab}|{Guid.NewGuid()}"
     };
@@ -417,7 +452,7 @@ public sealed class NotchController
 
             case Mode.Hud:
                 var cutout = this.notch.HardwareNotchSize;
-                var hud = new HudView(this.hudKind, cutout.Width, Math.Max(cutout.Height, 32), this.controls);
+                var hud = new HudView(this.hudKind, cutout.Width, this.settings.NotchLeftWidth, this.settings.NotchRightWidth, this.settings.NotchWidthsLocked, this.PeekHeight, this.controls);
                 this.live = hud;
                 await this.notch.SetContentAsync(hud, this.ConfigurePeek);
                 break;
@@ -435,7 +470,7 @@ public sealed class NotchController
     PeekView? BuildPeek()
     {
         var cutout = this.notch.HardwareNotchSize;
-        return PeekView.Create(cutout.Width, Math.Max(cutout.Height, 32), this.media, this.countdown, this.calendar, this.weather, this.time);
+        return PeekView.Create(cutout.Width, this.settings.NotchLeftWidth, this.settings.NotchRightWidth, this.settings.NotchWidthsLocked, this.PeekHeight, this.previewingSize, this.media, this.countdown, this.calendar, this.weather, this.time);
     }
 
     PanelView BuildPanel()
@@ -474,12 +509,17 @@ public sealed class NotchController
         return new TrayTab(this.tray);
     }
 
-    /// <summary>Wings beside the camera: no padding above, the camera's own height.</summary>
+    /// <summary>
+    /// Wings beside the camera, at the camera's own height (or more, if asked for). No padding at all: the
+    /// wings keep their own distance from the edge, so a wing sized to 0 is flush with the camera. And no
+    /// surface: the window can only grow evenly from the camera, so the peek draws its own black, over
+    /// just the wings asked for (see <see cref="PeekView"/>).
+    /// </summary>
     void ConfigurePeek(NotchView view)
     {
-        var cutout = this.notch.HardwareNotchSize;
-        view.ContentPadding = new Thickness(12, 0);
-        view.MinNotchHeight = Math.Max(cutout.Height, 32);
+        view.ContentPadding = new Thickness(0);
+        view.SurfaceColor = Colors.Transparent;
+        view.MinNotchHeight = this.PeekHeight;
         view.CornerRadius = 12;
     }
 

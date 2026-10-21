@@ -48,6 +48,26 @@ public sealed class SettingsPage : ContentPage
             return new HorizontalStackLayout { Spacing = 10, Children = { label, stepper } };
         }
 
+        // Whole points only, and only on a change: every save re-renders the notch, and a drag sends many.
+        (View Row, Slider Slider) Slide(string text, double value, double min, double max, Action<double> changed)
+        {
+            var label = new Label { Text = $"{text}: {value:0}", TextColor = Colors.White, VerticalOptions = LayoutOptions.Center, WidthRequest = 160 };
+            var slider = new Slider { Minimum = min, Maximum = max, Value = value, WidthRequest = 300, VerticalOptions = LayoutOptions.Center };
+            var last = Math.Round(value);
+            slider.ValueChanged += (_, e) =>
+            {
+                var rounded = Math.Round(e.NewValue);
+                if (rounded == last)
+                    return;
+                last = rounded;
+                label.Text = $"{text}: {rounded:0}";
+                changed(rounded);
+            };
+            return (new HorizontalStackLayout { Spacing = 10, Children = { label, slider } }, slider);
+        }
+
+        var size = this.SizeSection(settings, Slide, Toggle);
+
         var script = new Editor
         {
             Text = settings.TeleprompterScript,
@@ -129,6 +149,8 @@ public sealed class SettingsPage : ContentPage
                     Stepper("Speed (points per second)", settings.TeleprompterSpeed, 5, 200, 4, v => settings.TeleprompterSpeed = v),
 
                     Heading("Notch"),
+                    Note("The size of the closed notch, either side of the camera. Each side still grows to fit what it's showing — what's playing on the left; the weather, a countdown or a meeting on the right. At 0 and 0 with nothing to show, it's just the camera."),
+                    size,
                     notch,
 
                     Heading("Weather"),
@@ -145,6 +167,59 @@ public sealed class SettingsPage : ContentPage
                 }
             }
         };
+    }
+
+    /// <summary>
+    /// The closed notch's size. Locked, one slider sets both sides; unlocked, a slider each. Switching
+    /// rebuilds the page, since the sliders shown change.
+    /// </summary>
+    View SizeSection(AppSettings settings, Func<string, double, double, double, Action<double>, (View Row, Slider Slider)> slide, Func<string, bool, Action<bool>, View> toggle)
+    {
+        var section = new VerticalStackLayout { Spacing = 8 };
+        var sliders = new List<Slider>();
+
+        section.Children.Add(toggle("Same width both sides", settings.NotchWidthsLocked, locked =>
+        {
+            // Locking evens the sides at the left's width; unlocking starts both from where they are.
+            if (locked)
+                settings.NotchRightWidth = settings.NotchLeftWidth;
+            settings.NotchWidthsLocked = locked;
+            this.Rebuild();
+        }));
+
+        if (settings.NotchWidthsLocked)
+        {
+            var both = slide("Width each side", settings.NotchLeftWidth, 0, AppSettings.MaxNotchWingWidth, v =>
+            {
+                settings.NotchLeftWidth = v;
+                settings.NotchRightWidth = v;
+            });
+            section.Children.Add(both.Row);
+            sliders.Add(both.Slider);
+        }
+        else
+        {
+            var left = slide("Left of camera", settings.NotchLeftWidth, 0, AppSettings.MaxNotchWingWidth, v => settings.NotchLeftWidth = v);
+            var right = slide("Right of camera", settings.NotchRightWidth, 0, AppSettings.MaxNotchWingWidth, v => settings.NotchRightWidth = v);
+            section.Children.Add(left.Row);
+            section.Children.Add(right.Row);
+            sliders.Add(left.Slider);
+            sliders.Add(right.Slider);
+        }
+
+        var height = slide("Extra height", settings.NotchExtraHeight, 0, AppSettings.MaxNotchExtraHeight, v => settings.NotchExtraHeight = v);
+        section.Children.Add(height.Row);
+
+        var reset = new Button { Text = "Reset size", HorizontalOptions = LayoutOptions.Start };
+        reset.Clicked += (_, _) =>
+        {
+            foreach (var slider in sliders)
+                slider.Value = AppSettings.DefaultNotchWingWidth;
+            height.Slider.Value = 0;
+        };
+        section.Children.Add(reset);
+
+        return section;
     }
 
     View WeatherSection(AppSettings settings, WeatherService weather, Func<string, bool, Action<bool>, View> toggle, Func<string, Label> note)
