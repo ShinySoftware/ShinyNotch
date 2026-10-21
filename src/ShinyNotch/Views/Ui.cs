@@ -138,7 +138,7 @@ static class Ui
     /// <remarks>
     /// Hover comes from a tracking area of our own on the native view, not a PointerGestureRecognizer:
     /// the AppKit head only forwards pointer events from its container views (a Border's view isn't one),
-    /// and only in the key window, which the notch never is.
+    /// and only in the key window, which the notch never is (dotnet/maui-labs#744).
     /// </remarks>
     public static T Pressable<T>(this T button, Action tapped) where T : Border
     {
