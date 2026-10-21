@@ -28,4 +28,11 @@ public interface IPlatformShell
 
     /// <summary>Where the user manages login items, for Settings to point at ("System Settings ▸ General ▸ Login Items").</summary>
     string LoginItemsLocation { get; }
+
+    /// <summary>
+    /// Lifts another of the app's windows (by title) above the notch, which sits over almost everything:
+    /// the quick entry popup tasks are typed into would otherwise open underneath the panel. Nothing to do
+    /// where the platform stacks the window shown last on top.
+    /// </summary>
+    void RaiseAboveNotch(string windowTitle) { }
 }

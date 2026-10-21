@@ -28,4 +28,15 @@ public interface IPlatformUi
 
     /// <summary>The file manager's icon for a file, as PNG bytes, or null.</summary>
     byte[]? FileIcon(string path, int size);
+
+    /// <summary>
+    /// Shows a camera preview flipped left to right, like a mirror, whichever way the camera says it
+    /// faces. Called again after every camera switch. By default the view itself is flipped; a head
+    /// whose views don't flip around their centre does it its own way.
+    /// </summary>
+    void MirrorCamera(View camera)
+    {
+        camera.AnchorX = 0.5;
+        camera.ScaleX = -1;
+    }
 }

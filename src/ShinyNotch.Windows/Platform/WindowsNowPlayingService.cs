@@ -1,3 +1,4 @@
+using Shiny;
 using ShinyNotch.Platform;
 using global::Windows.Media.Control;
 using global::Windows.Storage.Streams;
@@ -13,6 +14,7 @@ namespace ShinyNotch.Windows;
 /// change, on its own threads; each is read and published on the main thread. The timeline is only
 /// reported now and then, so the position is carried forward on the clock between reports, as on macOS.
 /// </remarks>
+[Singleton]
 sealed class WindowsNowPlayingService : INowPlayingService, IDisposable
 {
     readonly IDispatcher dispatcher;

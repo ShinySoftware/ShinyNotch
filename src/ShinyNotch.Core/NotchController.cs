@@ -1,3 +1,4 @@
+using Shiny;
 using Shiny.Maui.Controls;
 using Shiny.Maui.Controls.Desktop.FileDrop;
 using Shiny.Maui.Controls.Desktop.Notch;
@@ -23,6 +24,7 @@ namespace ShinyNotch;
 /// layout that is already on screen. A rebuild that would produce the same thing is skipped.
 /// </para>
 /// </remarks>
+[Singleton]
 public sealed class NotchController
 {
     enum Mode
@@ -59,7 +61,10 @@ public sealed class NotchController
     readonly TeleprompterService prompter;
     readonly WeatherService weather;
     readonly VoiceNotesService notes;
+    readonly TasksService tasks;
+    readonly TaskEntry taskEntry;
     readonly bool hasMirror;
+    readonly ICameraControls? cameraControls;
     readonly ICaptureTab? capture;
     readonly IPlatformShell shell;
     readonly IDispatcher dispatcher;
@@ -100,7 +105,10 @@ public sealed class NotchController
         TeleprompterService prompter,
         WeatherService weather,
         VoiceNotesService notes,
+        TasksService tasks,
+        TaskEntry taskEntry,
         IEnumerable<MirrorSupport> mirror,
+        IEnumerable<ICameraControls> cameraControls,
         IEnumerable<ICaptureTab> captures,
         IPlatformShell shell,
         IDispatcher dispatcher,
@@ -118,7 +126,10 @@ public sealed class NotchController
         this.prompter = prompter;
         this.weather = weather;
         this.notes = notes;
+        this.tasks = tasks;
+        this.taskEntry = taskEntry;
         this.hasMirror = mirror.Any();
+        this.cameraControls = cameraControls.FirstOrDefault();
         this.capture = captures.FirstOrDefault();
         this.shell = shell;
         this.dispatcher = dispatcher;
@@ -153,7 +164,7 @@ public sealed class NotchController
     }
 
     /// <summary>The notch should stay open even when the pointer leaves.</summary>
-    bool IsPinned => this.pinnedByUser || this.dragging || this.prompter.IsRunning || this.notes.IsRecording;
+    bool IsPinned => this.pinnedByUser || this.dragging || this.prompter.IsRunning || this.notes.IsRecording || this.taskEntry.IsOpen;
 
     public async Task StartAsync()
     {
@@ -218,6 +229,9 @@ public sealed class NotchController
         };
         this.controls.ChangedExternally += (_, kind) => this.ShowHud(kind);
         this.weather.Changed += (_, _) => this.Rebuild(NotchTab.Weather);
+        this.tasks.Changed += (_, _) => this.Rebuild(NotchTab.Tasks);
+        // Typing a task holds the panel open behind the popup; done typing, it closes as usual.
+        this.taskEntry.Closed += (_, _) => this.ScheduleClose();
         this.notes.Changed += (_, _) =>
         {
             this.Rebuild(NotchTab.Notes);
@@ -518,8 +532,9 @@ public sealed class NotchController
         this.shownKey = key;
 
         // What's on screen now is about to be replaced. Something that holds on to more than views (the
-        // mirror's camera, a level meter's subscription) lets go once its replacement is up.
-        var previous = this.live;
+        // mirror's camera, a level meter's subscription) lets go first: once the content is swapped its
+        // handlers are out of reach, and the camera would keep running behind the new tab.
+        (this.live as IDisposable)?.Dispose();
 
         switch (this.mode)
         {
@@ -544,9 +559,6 @@ public sealed class NotchController
                 (panel.Body as PrompterTab)?.Scroll();
                 break;
         }
-
-        if (!ReferenceEquals(previous, this.live))
-            (previous as IDisposable)?.Dispose();
     }
 
     PeekView? BuildPeek()
@@ -566,8 +578,9 @@ public sealed class NotchController
             NotchTab.Calendar => new CalendarTab(this.calendar, this.time, this.shell, () => _ = this.RenderAsync()),
             NotchTab.Timer => new TimerTab(this.countdown),
             NotchTab.Capture when this.capture != null => this.capture.Build(this.FoldAway),
-            NotchTab.Mirror => new MirrorTab(this.settings, this.tray),
+            NotchTab.Mirror => new MirrorTab(this.settings, this.tray, this.cameraControls),
             NotchTab.Notes => new NotesTab(this.notes, this.tray),
+            NotchTab.Tasks => new TasksTab(this.tasks, this.taskEntry.Show),
             _ => new PrompterTab(this.prompter, () => this.OpenSettings?.Invoke())
         };
 
@@ -651,6 +664,9 @@ public sealed class NotchController
         // Due times rather than "second == 0": a tick can be late (App Nap, a busy main thread), and a
         // skipped second must not be a skipped refresh.
         var now = this.time.GetUtcNow();
+
+        // Checked-off tasks clear away a day later; the minute tick is plenty for that.
+        this.tasks.Prune();
 
         if (now >= this.nextCalendarRefresh)
         {

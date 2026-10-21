@@ -1,3 +1,4 @@
+using Shiny;
 using ShinyNotch.Platform;
 
 namespace ShinyNotch.Services;
@@ -21,6 +22,7 @@ public sealed record SystemStats(
 /// Stats tab calls <see cref="Begin"/> when it opens and <see cref="Sample"/> once a second while it is on
 /// screen, and nothing else reads the counters, so closing the tab stops the work entirely.
 /// </summary>
+[Singleton]
 public sealed class SystemStatsService
 {
     /// <summary>Re-opening the tab within this long carries on, rather than starting the readings over.</summary>

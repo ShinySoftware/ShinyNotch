@@ -1,5 +1,6 @@
 using ShinyNotch.Platform;
 using ShinyNotch.Services;
+using Slider = Shiny.Maui.Controls.Slider;
 
 namespace ShinyNotch.Views;
 
@@ -34,31 +35,23 @@ sealed class ControlsBar : Grid, ILiveView
         }
 
         this.mute = Ui.SymbolButton(this.VolumeSymbol(), controls.ToggleMute, 13, Ui.Secondary, "Mute", padding: new Thickness(2));
-        var volumeCard = this.SliderCard(this.mute, controls.Volume ?? 0, v => controls.SetVolume((float)v), out this.volume);
+        var volumeCard = this.SliderCard(this.mute, controls.Volume ?? 0, Ui.Teal, Ui.Purple, v => controls.SetVolume((float)v), out this.volume);
         this.Children.Add(volumeCard.At(column: 1));
 
         if (controls.DisplayBrightness is { } level)
-            this.Children.Add(this.SliderCard(Ui.Symbol("sun.max.fill", 13, Ui.Secondary), level, v => controls.SetBrightness((float)v), out this.brightness).At(column: 2));
+            this.Children.Add(this.SliderCard(Ui.Symbol("sun.max.fill", 13, Ui.Secondary), level, Ui.Red, Ui.Yellow, v => controls.SetBrightness((float)v), out this.brightness).At(column: 2));
         else
             Grid.SetColumnSpan(volumeCard, 2);
     }
 
-    View SliderCard(View icon, double value, Action<double> changed, out Slider slider)
+    View SliderCard(View icon, double value, Color cold, Color hot, Action<double> changed, out Slider slider)
     {
-        slider = new Slider
-        {
-            Minimum = 0,
-            Maximum = 1,
-            Value = value,
-            MinimumTrackColor = Ui.Text,
-            MaximumTrackColor = Ui.Raised,
-            ThumbColor = Colors.White,
-            VerticalOptions = LayoutOptions.Center
-        };
-        slider.ValueChanged += (_, e) =>
+        // A fine step: the keys move volume and brightness in sixteenths, and finer still with ⌥⇧.
+        slider = Ui.Slider(0, 1, value, 0.01, cold, hot);
+        slider.ValueChangedEvent += (_, v) =>
         {
             if (!this.syncing)
-                changed(e.NewValue);
+                changed(v);
         };
 
         return Ui.Card(new Grid

@@ -1,8 +1,10 @@
+using Shiny;
 using ShinyNotch.Platform;
 
 namespace ShinyNotch.MacOS;
 
 /// <summary>The Capture tab, driving macshot.</summary>
+[Singleton]
 sealed class MacShotCaptureTab : ICaptureTab
 {
     /// <summary>Time for the panel to fold back to the peek, so a capture doesn't have the notch in it.</summary>

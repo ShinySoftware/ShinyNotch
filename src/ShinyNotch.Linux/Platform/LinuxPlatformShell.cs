@@ -1,8 +1,10 @@
+using Shiny;
 using ShinyNotch.Platform;
 
 namespace ShinyNotch.Linux;
 
 /// <summary>GTK windows, the GDK monitor list, and the freedesktop sound theme.</summary>
+[Singleton]
 sealed class LinuxPlatformShell : IPlatformShell
 {
     Gio.ListModel? monitors;

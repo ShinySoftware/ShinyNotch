@@ -3,6 +3,8 @@
          services on top of the Platform interfaces. Plain net10.0, so the macOS, Windows and GTK heads all
          take it; each head supplies the Platform implementations. -->
     <PropertyGroup>
+        <ShinyDIExtensionMethodName>AddShinyNotchServices</ShinyDIExtensionMethodName>
+        <ShinyDIExtensionNamespace>ShinyNotch</ShinyDIExtensionNamespace>
         <UsesShinyAudio>true</UsesShinyAudio>
         <TargetFramework>net10.0</TargetFramework>
         <UseMaui>true</UseMaui>
@@ -18,6 +20,7 @@
         <PackageReference Include="Shiny.Extensions.Stores" Version="6.0.1" />
         <PackageReference Include="Shiny.Maui.Controls" Version="2.0.0-beta-0010" />
         <PackageReference Include="Shiny.Maui.Controls.Camera" Version="2.0.0-beta-0010" />
+        <PackageReference Include="Shiny.Maui.Controls.Camera.Barcode" Version="2.0.0-beta-0010" />
         <PackageReference Include="Shiny.Maui.Controls.Desktop" Version="2.0.0-beta-0010" />
     </ItemGroup>
 

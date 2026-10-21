@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using Shiny;
 using ShinyNotch.Platform;
 
 namespace ShinyNotch.Services;
@@ -32,6 +33,7 @@ public sealed record WeatherReport(
 /// "Where you are" comes from CoreLocation, asked once per refresh and named with the system's reverse
 /// geocoder. Temperatures follow the region's units: Fahrenheit where the region isn't metric.
 /// </remarks>
+[Singleton]
 public sealed class WeatherService
 {
     static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(20);

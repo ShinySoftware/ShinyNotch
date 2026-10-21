@@ -1,3 +1,4 @@
+using Shiny;
 using ShinyNotch.Platform;
 using global::Windows.Devices.Geolocation;
 
@@ -7,6 +8,7 @@ namespace ShinyNotch.Windows;
 /// Windows location services. There's no reverse geocoder without a Maps key, so a fix comes unnamed and
 /// the weather keeps the name it had ("My Location" until then).
 /// </summary>
+[Singleton]
 sealed class WindowsLocationProvider : ILocationProvider
 {
     // Windows doesn't say before it's asked; asking doesn't prompt a desktop app, it just reports the

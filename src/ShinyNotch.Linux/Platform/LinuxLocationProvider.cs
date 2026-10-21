@@ -1,3 +1,4 @@
+using Shiny;
 using ShinyNotch.Platform;
 using Tmds.DBus.Protocol;
 
@@ -8,6 +9,7 @@ namespace ShinyNotch.Linux;
 /// client starts, so asking is starting a client and seeing whether a fix comes back. Unnamed - GeoClue
 /// doesn't reverse-geocode - so the weather keeps its last name for the place.
 /// </summary>
+[Singleton]
 sealed class LinuxLocationProvider : ILocationProvider
 {
     const string Service = "org.freedesktop.GeoClue2";

@@ -6,6 +6,7 @@ namespace ShinyNotch.Services;
 public sealed record CalendarItem(string Title, DateTime Start, DateTime End, bool AllDay, Color Color, string? Location);
 
 /// <summary>Upcoming events from every calendar the user has, through Shiny.Calendar.</summary>
+[Singleton]
 public sealed class CalendarService
 {
     static readonly Color DefaultColor = Color.FromArgb("#22D3EE");

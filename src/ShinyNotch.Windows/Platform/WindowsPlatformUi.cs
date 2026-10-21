@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System.Runtime.InteropServices.WindowsRuntime;
+using Shiny;
 using ShinyNotch.Platform;
 using global::Windows.Graphics.Imaging;
 using global::Windows.Storage;
@@ -14,6 +15,7 @@ namespace ShinyNotch.Windows;
 /// Segoe Fluent Icons for the SF Symbol names, a WinUI TextBlock for measuring, the platform view's own
 /// pointer events for hover, and Windows.Graphics.Imaging for pixels and file icons.
 /// </summary>
+[Singleton]
 sealed class WindowsPlatformUi : IPlatformUi
 {
     /// <summary>Segoe Fluent Icons ships with Windows 11; Windows 10 has MDL2, which shares the code points used here.</summary>

@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.Win32;
+using Shiny;
 using ShinyNotch.Platform;
 using Launcher = Windows.System.Launcher;
 using MauiWindow = Microsoft.Maui.Controls.Window;
@@ -10,6 +11,7 @@ using WinUIWindow = Microsoft.UI.Xaml.Window;
 namespace ShinyNotch.Windows;
 
 /// <summary>AppWindow for showing and hiding, SystemEvents for displays, ms-settings: for the rest.</summary>
+[Singleton]
 sealed partial class WindowsPlatformShell : IPlatformShell
 {
     const uint MB_ICONASTERISK = 0x40;

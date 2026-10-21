@@ -1,10 +1,12 @@
 using System.Text;
+using Shiny;
 using ShinyNotch.Platform;
 using Tmds.DBus.Protocol;
 
 namespace ShinyNotch.Linux;
 
 /// <summary>The GDK clipboard, the freedesktop file manager interface, and xdg-open.</summary>
+[Singleton]
 sealed class LinuxFileActions : IFileActions
 {
     /// <summary>A text/uri-list on the clipboard: what file managers read when pasting files.</summary>

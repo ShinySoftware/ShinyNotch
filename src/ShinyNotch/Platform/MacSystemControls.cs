@@ -1,9 +1,11 @@
+using Shiny;
 using ShinyNotch.Native;
 using ShinyNotch.Platform;
 
 namespace ShinyNotch.MacOS;
 
 /// <summary>CoreAudio listeners on the default output device.</summary>
+[Singleton]
 sealed class MacAudioControl : IAudioControl
 {
     public float? Volume
@@ -27,6 +29,7 @@ sealed class MacAudioControl : IAudioControl
 }
 
 /// <summary>The built-in display, through DisplayServices.</summary>
+[Singleton]
 sealed class MacBrightnessControl : IBrightnessControl
 {
     public float? Brightness => Native.Brightness.Get();
@@ -37,6 +40,7 @@ sealed class MacBrightnessControl : IBrightnessControl
 }
 
 /// <summary>Mach host statistics, sysctl, IOKit and getifaddrs.</summary>
+[Singleton]
 sealed class MacSystemCounters : ISystemCounters
 {
     public (ulong Busy, ulong Total) CpuTicks() => SystemCounters.CpuTicks();

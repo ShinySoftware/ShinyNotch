@@ -1,4 +1,5 @@
 using System.Management;
+using Shiny;
 using ShinyNotch.Platform;
 
 namespace ShinyNotch.Windows;
@@ -7,6 +8,7 @@ namespace ShinyNotch.Windows;
 /// The laptop panel's brightness through WMI (root\WMI), the same provider the brightness keys and the
 /// quick settings slider drive. Desktop monitors don't expose it, so there it is null and unobserved.
 /// </summary>
+[Singleton]
 sealed class WindowsBrightnessControl : IBrightnessControl, IDisposable
 {
     const string Scope = @"root\WMI";

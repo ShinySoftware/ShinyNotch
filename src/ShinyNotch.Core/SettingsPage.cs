@@ -10,6 +10,7 @@ using LabelCell = Shiny.Maui.Controls.Cells.LabelCell;
 using RadioCell = Shiny.Maui.Controls.Cells.RadioCell;
 using SwitchCell = Shiny.Maui.Controls.Cells.SwitchCell;
 using TableSection = Shiny.Maui.Controls.Sections.TableSection;
+using Slider = Shiny.Maui.Controls.Slider;
 using TableView = Shiny.Maui.Controls.TableView;
 
 namespace ShinyNotch;
@@ -23,6 +24,7 @@ namespace ShinyNotch;
 /// Only cells that edit in place: the picker and number cells open a dialog, and dialogs don't paint on
 /// the AppKit head.
 /// </remarks>
+[Transient]
 public sealed class SettingsPage : ContentPage
 {
     // Kept across rebuilds of the page (see Rebuild): the AppKit head never realises rows added to a page
@@ -460,11 +462,12 @@ public sealed class SettingsPage : ContentPage
     static CustomCell SliderCell(string title, string symbol, Color tint, double value, double max, List<Slider> sliders, Action<double> changed)
     {
         var shown = new Label { Text = $"{value:0} pt", TextColor = Ui.Secondary, FontSize = 12, WidthRequest = 44, HorizontalTextAlignment = TextAlignment.End, VerticalOptions = LayoutOptions.Center };
-        var slider = new Slider { Minimum = 0, Maximum = max, Value = value, WidthRequest = 220, VerticalOptions = LayoutOptions.Center };
+        var slider = Ui.Slider(0, max, value, 1, tint, Ui.Purple);
+        slider.WidthRequest = 220;
         var last = Math.Round(value);
-        slider.ValueChanged += (_, e) =>
+        slider.ValueChangedEvent += (_, v) =>
         {
-            var rounded = Math.Round(e.NewValue);
+            var rounded = Math.Round(v);
             if (rounded == last)
                 return;
             last = rounded;

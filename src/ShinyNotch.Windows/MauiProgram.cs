@@ -1,5 +1,4 @@
 using Shiny;
-using ShinyNotch.Platform;
 using ShinyNotch.Windows;
 
 namespace ShinyNotch;
@@ -16,14 +15,8 @@ public static class MauiProgram
 
         builder.Services.AddCalendarStore();
         builder.Services.AddAudioServices();
-        builder.Services.AddSingleton<IPlatformShell, WindowsPlatformShell>();
-        builder.Services.AddSingleton<IPlatformUi, WindowsPlatformUi>();
-        builder.Services.AddSingleton<IAudioControl, WindowsAudioControl>();
-        builder.Services.AddSingleton<IBrightnessControl, WindowsBrightnessControl>();
-        builder.Services.AddSingleton<ISystemCounters, WindowsSystemCounters>();
-        builder.Services.AddSingleton<IFileActions, WindowsFileActions>();
-        builder.Services.AddSingleton<ILocationProvider, WindowsLocationProvider>();
-        builder.Services.AddSingleton<INowPlayingService, WindowsNowPlayingService>();
+        // Everything marked [Singleton] in this head: the Platform implementations.
+        builder.Services.AddPlatformServices();
         // No ICaptureTab: macshot is macOS only, so Windows has no Capture tab.
 
         return builder.Build();

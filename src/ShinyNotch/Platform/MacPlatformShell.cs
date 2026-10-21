@@ -1,9 +1,11 @@
 using AppKit;
 using Foundation;
+using Shiny;
 using ShinyNotch.Platform;
 
 namespace ShinyNotch.MacOS;
 
+[Singleton]
 sealed class MacPlatformShell : IPlatformShell
 {
     NSObject? screensObserver;
@@ -46,4 +48,14 @@ sealed class MacPlatformShell : IPlatformShell
         => NSWorkspace.SharedWorkspace.OpenUrl(new NSUrl("x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars"));
 
     public string LoginItemsLocation => "System Settings ▸ General ▸ Login Items";
+
+    /// <summary>One level over the notch's (Status), so the window is drawn on top of the panel.</summary>
+    public void RaiseAboveNotch(string windowTitle)
+    {
+        foreach (var window in Application.Current?.Windows ?? [])
+        {
+            if (window.Title == windowTitle && window.Handler?.PlatformView is NSWindow native)
+                native.Level = NSWindowLevel.Status + 1;
+        }
+    }
 }

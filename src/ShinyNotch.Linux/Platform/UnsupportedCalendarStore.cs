@@ -8,6 +8,7 @@ namespace ShinyNotch.Linux;
 /// worth binding by hand. Reporting <see cref="AccessState.NotSupported"/> takes the calendar out of
 /// Settings and has its tab say so; nothing past the access check is ever asked.
 /// </summary>
+[Singleton]
 sealed class UnsupportedCalendarStore : ICalendarStore
 {
     public event EventHandler? Changed

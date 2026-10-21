@@ -1,13 +1,16 @@
 using System.Runtime.InteropServices;
 using AppKit;
+using AVFoundation;
 using CoreGraphics;
 using Foundation;
+using Shiny;
 using ShinyNotch.Platform;
 using ShinyNotch.Views;
 
 namespace ShinyNotch.MacOS;
 
 /// <summary>SF Symbols, AppKit's text metrics, tracking-area hover and Core Graphics pixels.</summary>
+[Singleton]
 sealed class MacPlatformUi : IPlatformUi
 {
     /// <summary>An SF Symbol drawn into a PNG: no icon assets ship with the app.</summary>
@@ -58,6 +61,31 @@ sealed class MacPlatformUi : IPlatformUi
         context.InterpolationQuality = CGInterpolationQuality.Medium;
         context.DrawImage(new CGRect(0, 0, size, size), cg);
         return pixels;
+    }
+
+    /// <summary>
+    /// Mirrors the camera's own preview layer, through its capture connection. Flipping the view instead
+    /// moved the preview out of sight: an AppKit layer scales around its corner, not its centre. The
+    /// session starts (and a camera switch rebuilds the connection) on the camera's queue, a moment
+    /// later, so this keeps checking for a while and mirrors whatever connection is there.
+    /// </summary>
+    public void MirrorCamera(View camera)
+    {
+        var until = DateTime.UtcNow.AddSeconds(4);
+        void Apply()
+        {
+            if (camera.Handler?.PlatformView is NSView native &&
+                native.Layer?.Sublayers?.OfType<AVCaptureVideoPreviewLayer>().FirstOrDefault()?.Connection is { SupportsVideoMirroring: true } connection &&
+                !(connection.VideoMirrored && !connection.AutomaticallyAdjustsVideoMirroring))
+            {
+                connection.AutomaticallyAdjustsVideoMirroring = false;
+                connection.VideoMirrored = true;
+            }
+
+            if (DateTime.UtcNow < until && camera.Handler != null)
+                camera.Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(250), Apply);
+        }
+        camera.Dispatcher.Dispatch(Apply);
     }
 
     /// <summary>The Finder icon.</summary>

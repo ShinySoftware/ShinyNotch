@@ -3,5 +3,12 @@
         <LangVersion>latest</LangVersion>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
+        <!-- Shiny's DI generator: each project's [Singleton]/[Transient] classes go in an internal
+             extension method of its own (named in the project), so Core's doesn't collide with a head's. -->
+        <ShinyDIExtensionInternalAccessor>true</ShinyDIExtensionInternalAccessor>
     </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Shiny.Extensions.DependencyInjection" Version="6.0.1" />
+    </ItemGroup>
 </Project>

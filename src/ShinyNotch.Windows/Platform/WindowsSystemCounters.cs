@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
+using Shiny;
 using ShinyNotch.Platform;
 
 namespace ShinyNotch.Windows;
@@ -11,6 +12,7 @@ namespace ShinyNotch.Windows;
 /// GetSystemTimes and GlobalMemoryStatusEx, the disks' own running byte totals (IOCTL_DISK_PERFORMANCE),
 /// the network interfaces' statistics, and the "GPU Engine" counters for the GPU.
 /// </summary>
+[Singleton]
 sealed partial class WindowsSystemCounters : ISystemCounters
 {
     const uint IoctlDiskPerformance = 0x00070020;

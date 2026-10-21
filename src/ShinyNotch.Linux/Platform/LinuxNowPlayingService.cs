@@ -1,3 +1,4 @@
+using Shiny;
 using ShinyNotch.Platform;
 using Tmds.DBus.Protocol;
 
@@ -13,6 +14,7 @@ namespace ShinyNotch.Linux;
 /// the first one paused on a track. The position is carried forward on the clock between readings, as on
 /// the Mac.
 /// </remarks>
+[Singleton]
 sealed class LinuxNowPlayingService : INowPlayingService, IDisposable
 {
     const string Prefix = "org.mpris.MediaPlayer2.";

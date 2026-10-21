@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.RegularExpressions;
+using Shiny;
 using ShinyNotch.Platform;
 using Tmds.DBus.Protocol;
 
@@ -10,6 +11,7 @@ namespace ShinyNotch.Linux;
 /// The default sink through <c>pactl</c>, which PulseAudio and PipeWire (pipewire-pulse) both answer,
 /// and <c>pactl subscribe</c> for word of changes.
 /// </summary>
+[Singleton]
 sealed partial class LinuxAudioControl : IAudioControl
 {
     const string Sink = "@DEFAULT_SINK@";
@@ -78,6 +80,7 @@ sealed partial class LinuxAudioControl : IAudioControl
 /// The panel's backlight from <c>/sys/class/backlight</c>, set through logind - which lets the session's
 /// own user change it without root or a udev rule. Not observable, so Core polls.
 /// </summary>
+[Singleton]
 sealed class LinuxBrightnessControl : IBrightnessControl
 {
     const string Root = "/sys/class/backlight";
@@ -172,6 +175,7 @@ sealed class LinuxBrightnessControl : IBrightnessControl
 }
 
 /// <summary>The kernel's own counters under <c>/proc</c> and <c>/sys</c>.</summary>
+[Singleton]
 sealed class LinuxSystemCounters : ISystemCounters
 {
     /// <summary>The <c>cpu</c> line of /proc/stat, in jiffies: busy is everything but idle and iowait.</summary>

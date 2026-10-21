@@ -1,9 +1,11 @@
 using CoreLocation;
+using Shiny;
 using ShinyNotch.Platform;
 
 namespace ShinyNotch.MacOS;
 
 /// <summary>CoreLocation, to a kilometre, named with the reverse geocoder.</summary>
+[Singleton]
 sealed class MacLocationProvider : ILocationProvider
 {
     readonly CLLocationManager location = new();

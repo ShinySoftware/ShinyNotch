@@ -3,6 +3,7 @@ using System.Text.Json;
 using AppKit;
 using Foundation;
 using ImageIO;
+using Shiny;
 
 namespace ShinyNotch.MacOS;
 
@@ -23,6 +24,7 @@ namespace ShinyNotch.MacOS;
 /// recording permission (only titles need that), so the Stop button follows that window.
 /// </para>
 /// </remarks>
+[Singleton]
 public sealed class MacShotService : IDisposable
 {
     public const string BundleId = "com.sw33tlie.macshot.macshot";

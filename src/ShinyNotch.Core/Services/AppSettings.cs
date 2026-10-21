@@ -1,4 +1,5 @@
 using System.Globalization;
+using Shiny;
 using Shiny.Extensions.Stores;
 
 namespace ShinyNotch.Services;
@@ -6,6 +7,7 @@ namespace ShinyNotch.Services;
 /// <summary>
 /// Persisted preferences, on Shiny's default store: NSUserDefaults on macOS, a settings file elsewhere.
 /// </summary>
+[Singleton]
 public sealed class AppSettings
 {
     readonly IKeyValueStore store;
@@ -109,6 +111,13 @@ public sealed class AppSettings
     }
 
     const string LegacyShowMacShotTab = "ShowMacShotTab";
+
+    /// <summary>The task list, as JSON (see <see cref="TasksService"/>).</summary>
+    public string? Tasks
+    {
+        get => this.Text(nameof(this.Tasks));
+        set => this.Set(nameof(this.Tasks), value ?? "", notify: false);
+    }
 
     /// <summary>The microphone voice notes record from, by its device id; null is the system default.</summary>
     public string? VoiceNoteInput

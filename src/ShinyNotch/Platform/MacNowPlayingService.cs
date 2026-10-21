@@ -1,5 +1,6 @@
 using AppKit;
 using Foundation;
+using Shiny;
 using ShinyNotch.Platform;
 
 namespace ShinyNotch.MacOS;
@@ -28,6 +29,7 @@ enum MediaPlayer
 /// player that times out is left alone for a while before it is asked again.
 /// </para>
 /// </remarks>
+[Singleton]
 sealed class MacNowPlayingService : INowPlayingService, IDisposable
 {
     const string MusicBundle = "com.apple.Music";

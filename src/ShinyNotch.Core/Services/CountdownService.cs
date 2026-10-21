@@ -1,3 +1,4 @@
+using Shiny;
 using ShinyNotch.Platform;
 
 namespace ShinyNotch.Services;
@@ -7,6 +8,7 @@ namespace ShinyNotch.Services;
 /// Nothing ticks here: one timer is set for the moment the countdown ends, and moved when it is paused,
 /// extended or cancelled. The notch draws the seconds on its own clock while it shows them.
 /// </remarks>
+[Singleton]
 public sealed class CountdownService : IDisposable
 {
     readonly IDispatcher dispatcher;

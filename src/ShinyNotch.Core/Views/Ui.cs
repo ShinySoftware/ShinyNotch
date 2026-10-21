@@ -33,8 +33,11 @@ static class Ui
     public static readonly Color Purple = Color.FromArgb("#BF5AF2");
     public static readonly Color Indigo = Color.FromArgb("#5E5CE6");
 
-    /// <summary>The expanded panel's width. Fixed, so switching tabs only ever changes the height.</summary>
-    public const double PanelWidth = 500;
+    /// <summary>
+    /// The expanded panel's width. Fixed, so switching tabs only ever changes the height. Wide enough for
+    /// six tabs a side of the camera at full size.
+    /// </summary>
+    public const double PanelWidth = 640;
 
     /// <summary>The width inside the panel's padding.</summary>
     public const double ContentWidth = PanelWidth - 28;
@@ -268,6 +271,33 @@ static class Ui
             HeightRequest = size,
             Content = content
         };
+    }
+
+    /// <summary>
+    /// Shiny's slider. Its track blends from <paramref name="cold"/> at the bottom of the range to
+    /// <paramref name="hot"/> at the top as it moves, under a small white thumb, with no tooltip.
+    /// </summary>
+    public static Shiny.Maui.Controls.Slider Slider(double minimum, double maximum, double value, double step, Color cold, Color hot)
+        => new()
+        {
+            Minimum = minimum,
+            Maximum = maximum,
+            Step = step,
+            Value = value,
+            ColdColor = cold,
+            HotColor = hot,
+            TrackHeight = 6,
+            ThumbSize = 16,
+            ThumbColor = Colors.White,
+            ThumbBorderWidth = 0,
+            ShowTooltip = false,
+            VerticalOptions = LayoutOptions.Center
+        };
+
+    public static T CenteredVertically<T>(this T view) where T : View
+    {
+        view.VerticalOptions = LayoutOptions.Center;
+        return view;
     }
 
     public static T At<T>(this T view, int row = 0, int column = 0, int rowSpan = 1, int columnSpan = 1) where T : View

@@ -2,6 +2,8 @@
     <!-- The GTK 4 head. A plain net10.0 app, not UseMaui: the Linux platform package brings its own
          MAUI hosting. Everything shared is in Core; this supplies the Platform implementations. -->
     <PropertyGroup>
+        <ShinyDIExtensionMethodName>AddPlatformServices</ShinyDIExtensionMethodName>
+        <ShinyDIExtensionNamespace>ShinyNotch.Linux</ShinyDIExtensionNamespace>
         <UsesShinyAudioLinux>true</UsesShinyAudioLinux>
         <TargetFramework>net10.0</TargetFramework>
         <OutputType>Exe</OutputType>

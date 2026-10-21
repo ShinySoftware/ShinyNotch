@@ -14,6 +14,7 @@ public sealed record VoiceNote(string Path, DateTime Recorded, TimeSpan Duration
 /// The folder is the list - nothing else is stored - so a note deleted or added in the file manager is
 /// simply there or not the next time the tab opens.
 /// </remarks>
+[Singleton]
 public sealed class VoiceNotesService
 {
     /// <summary>Shiny.Audio records 16 kHz, 16-bit mono: the bytes per second of a note, for its length.</summary>

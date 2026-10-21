@@ -1,10 +1,12 @@
 using System.Runtime.InteropServices;
+using Shiny;
 using ShinyNotch.Platform;
 using ShinyNotch.Views;
 
 namespace ShinyNotch.Linux;
 
 /// <summary>The GTK icon theme, Pango's metrics, GTK motion controllers and GdkPixbuf.</summary>
+[Singleton]
 sealed class LinuxPlatformUi : IPlatformUi
 {
     /// <summary>Twice the points, as on the Mac: the Image view shows it at the box size, sharp on HiDPI.</summary>

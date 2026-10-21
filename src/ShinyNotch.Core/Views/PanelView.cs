@@ -9,6 +9,7 @@ public enum NotchTab
     Capture,
     Mirror,
     Notes,
+    Tasks,
     Calendar,
     Timer,
     Prompter
@@ -27,6 +28,7 @@ public sealed record NotchTabInfo(NotchTab Tab, string Symbol, string Name)
         new(NotchTab.Capture, "camera.viewfinder", "Capture"),
         new(NotchTab.Mirror, "person.crop.square.fill", "Mirror"),
         new(NotchTab.Notes, "waveform", "Voice Notes"),
+        new(NotchTab.Tasks, "checklist", "Tasks"),
         new(NotchTab.Calendar, "calendar", "Calendar"),
         new(NotchTab.Timer, "timer", "Timer"),
         new(NotchTab.Prompter, "text.alignleft", "Teleprompter")
@@ -40,7 +42,7 @@ public sealed record NotchTabInfo(NotchTab Tab, string Symbol, string Name)
 /// </summary>
 sealed class PanelView : Grid, ILiveView, IDisposable
 {
-    const double TabSymbol = 14;
+    const double TabSymbol = 16;
 
     public View Body { get; }
 
@@ -66,17 +68,16 @@ sealed class PanelView : Grid, ILiveView, IDisposable
         var leftTabs = tabs.Take(leftCount).ToList();
         var rightTabs = tabs.Skip(leftCount).ToList();
 
-        // Buttons get the room there is between the panel's edge and the camera: the more a side holds,
-        // the less padding each gets, and past five a side the symbols shrink a little too.
+        // Buttons share the room there is between the panel's edge and the camera: the more a side holds,
+        // the less padding each gets. The symbols stay full size.
         var perSide = Math.Max(leftTabs.Count, rightTabs.Count + 2);
-        var symbolSize = perSide > 5 ? TabSymbol - 2 : TabSymbol;
         var room = (Ui.ContentWidth - Math.Max(cutoutWidth, 8)) / 2;
-        var inset = Math.Clamp(Math.Floor((room / perSide - Ui.SymbolBox(symbolSize)) / 2), 1, 5);
+        var inset = Math.Clamp(Math.Floor((room / perSide - Ui.SymbolBox(TabSymbol)) / 2), 1, 6);
 
         // The selected tab sits on a pill; the pin only changes colour, since it's a switch, not a place.
         // The others are secondary grey, not tertiary: on black, tertiary was too faint to find.
         View Tab(string symbol, Action tapped, bool on, string hint, Color? onColor = null, bool pill = true)
-            => Ui.SymbolButton(symbol, tapped, symbolSize, on ? onColor ?? Ui.Text : Ui.Secondary, hint, on && pill ? Ui.Raised : null, padding: new Thickness(inset, 4));
+            => Ui.SymbolButton(symbol, tapped, TabSymbol, on ? onColor ?? Ui.Text : Ui.Secondary, hint, on && pill ? Ui.Raised : null, padding: new Thickness(inset, 4));
 
         HorizontalStackLayout Strip(IEnumerable<NotchTabInfo> tabs, LayoutOptions align)
         {

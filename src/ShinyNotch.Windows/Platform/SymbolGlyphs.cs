@@ -85,7 +85,13 @@ static class SymbolGlyphs
         ["trash"] = "\uE74D",
         ["tray.and.arrow.down"] = "\uE896",
 
+        // Tasks
+        ["checklist"] = "\uE9D5",
+        ["circle"] = "\uEA3A",
+
         // Voice notes and the mirror
+        ["qrcode"] = "\uED14",
+        ["arrow.up.right"] = "\uE8A7",
         ["waveform"] = "\uE720",
         ["mic"] = "\uE720",
         ["mic.fill"] = "\uE720",

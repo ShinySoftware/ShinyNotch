@@ -4,7 +4,6 @@ using Microsoft.Maui.Platforms.MacOS.Essentials;
 using Microsoft.Maui.Platforms.MacOS.Hosting;
 using Shiny;
 using ShinyNotch.MacOS;
-using ShinyNotch.Platform;
 #if DEBUG
 using Microsoft.Maui.DevFlow.Agent;
 #endif
@@ -26,16 +25,8 @@ public static class MauiProgram
 
         builder.Services.AddCalendarStore();
         builder.Services.AddAudioServices();
-        builder.Services.AddSingleton<IPlatformShell, MacPlatformShell>();
-        builder.Services.AddSingleton<IPlatformUi, MacPlatformUi>();
-        builder.Services.AddSingleton<IAudioControl, MacAudioControl>();
-        builder.Services.AddSingleton<IBrightnessControl, MacBrightnessControl>();
-        builder.Services.AddSingleton<ISystemCounters, MacSystemCounters>();
-        builder.Services.AddSingleton<IFileActions, MacFileActions>();
-        builder.Services.AddSingleton<ILocationProvider, MacLocationProvider>();
-        builder.Services.AddSingleton<INowPlayingService, MacNowPlayingService>();
-        builder.Services.AddSingleton<MacShotService>();
-        builder.Services.AddSingleton<ICaptureTab, MacShotCaptureTab>();
+        // Everything marked [Singleton] in this head: the Platform implementations and macshot.
+        builder.Services.AddPlatformServices();
 
 #if DEBUG
         builder.Logging.SetMinimumLevel(LogLevel.Debug);
@@ -51,6 +42,8 @@ public static class MauiProgram
     /// </summary>
     static void MigrateListSettings()
     {
+        // This runs before anything else of Core's has been touched, so its JSON types aren't in yet.
+        Services.SettingsJson.Register();
         var defaults = NSUserDefaults.StandardUserDefaults;
         foreach (var key in new[] { nameof(Services.AppSettings.TrayFiles), nameof(Services.AppSettings.WeatherPlaces) })
         {

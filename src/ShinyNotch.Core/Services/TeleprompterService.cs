@@ -1,9 +1,12 @@
+using Shiny;
+
 namespace ShinyNotch.Services;
 
 /// <summary>
 /// The teleprompter's state: whether it is running and how far it has scrolled. The notch reads the
 /// offset on every frame and scrolls its text to it.
 /// </summary>
+[Singleton]
 public sealed class TeleprompterService
 {
     readonly AppSettings settings;

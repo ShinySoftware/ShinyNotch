@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Shiny;
 using ShinyNotch.Platform;
 using global::Windows.ApplicationModel.DataTransfer;
 using Clipboard = global::Windows.ApplicationModel.DataTransfer.Clipboard;
@@ -11,6 +12,7 @@ using WinUIWindow = Microsoft.UI.Xaml.Window;
 namespace ShinyNotch.Windows;
 
 /// <summary>The clipboard as storage items, File Explorer, and the Windows share sheet.</summary>
+[Singleton]
 sealed class WindowsFileActions : IFileActions
 {
     /// <summary>The window whose share manager is hooked up. One handler per manager, reading <see cref="sharing"/>.</summary>

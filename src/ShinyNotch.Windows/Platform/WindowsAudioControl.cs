@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Shiny;
 using ShinyNotch.Platform;
 
 namespace ShinyNotch.Windows;
@@ -7,6 +8,7 @@ namespace ShinyNotch.Windows;
 /// Core Audio: the default render endpoint's master volume and mute, with a volume callback on it and a
 /// notification client that moves the callback when the default device changes (headphones in).
 /// </summary>
+[Singleton]
 sealed class WindowsAudioControl : IAudioControl
 {
     static readonly Guid AudioEndpointVolumeId = typeof(IAudioEndpointVolume).GUID;

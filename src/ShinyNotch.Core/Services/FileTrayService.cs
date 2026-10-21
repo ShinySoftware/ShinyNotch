@@ -1,3 +1,4 @@
+using Shiny;
 using ShinyNotch.Platform;
 
 namespace ShinyNotch.Services;
@@ -6,6 +7,7 @@ namespace ShinyNotch.Services;
 /// A shelf for files: drop them on the notch, then copy them back out to paste anywhere, share them,
 /// or reveal them. Holds references, not copies, and forgets files that have since been moved or deleted.
 /// </summary>
+[Singleton]
 public sealed class FileTrayService
 {
     readonly AppSettings settings;

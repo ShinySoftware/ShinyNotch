@@ -1,10 +1,12 @@
 using AppKit;
 using Foundation;
+using Shiny;
 using ShinyNotch.Platform;
 
 namespace ShinyNotch.MacOS;
 
 /// <summary>The pasteboard, Finder and AirDrop.</summary>
+[Singleton]
 sealed class MacFileActions : IFileActions
 {
     /// <summary>File URLs on the pasteboard, so ⌘V in Finder copies the files there.</summary>

@@ -15,12 +15,15 @@ public static class ShinyNotchHosting
     /// </summary>
     public static MauiAppBuilder UseShinyNotch(this MauiAppBuilder builder)
     {
+        SettingsJson.Register();
         builder
             .UseShinyControls()
             .UseFileDrop(o => o.AllowDirectories = true)
+            // Tasks are typed into the quick entry popup, as a window of its own over other apps.
+            .UseDesktopQuickEntry()
             .UseDesktopNotch(o =>
             {
-                o.MaxWidth = 560;
+                o.MaxWidth = 680;
                 o.MaxHeight = 640;
                 o.MorphDuration = 260;
             });
@@ -34,18 +37,9 @@ public static class ShinyNotchHosting
 
         builder.Services.AddShinyStores();
         builder.Services.AddSingleton(TimeProvider.System);
-        builder.Services.AddSingleton<AppSettings>();
         builder.Services.AddSingleton(sp => sp.GetRequiredService<IDispatcherProvider>().GetForCurrentThread()!);
-        builder.Services.AddSingleton<SystemControlsService>();
-        builder.Services.AddSingleton<SystemStatsService>();
-        builder.Services.AddSingleton<CalendarService>();
-        builder.Services.AddSingleton<CountdownService>();
-        builder.Services.AddSingleton<FileTrayService>();
-        builder.Services.AddSingleton<TeleprompterService>();
-        builder.Services.AddSingleton<WeatherService>();
-        builder.Services.AddSingleton<VoiceNotesService>();
-        builder.Services.AddSingleton<NotchController>();
-        builder.Services.AddTransient<SettingsPage>();
+        // Everything marked [Singleton] / [Transient] in Core.
+        builder.Services.AddShinyNotchServices();
         return builder;
     }
 

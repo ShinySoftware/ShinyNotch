@@ -1,3 +1,4 @@
+using Shiny;
 using ShinyNotch.Platform;
 
 namespace ShinyNotch.Services;
@@ -13,6 +14,7 @@ public enum HudKind
 /// the platform can say: nothing runs until something changes. Where brightness can't be observed, it
 /// alone falls back to a once-a-second poll.
 /// </summary>
+[Singleton]
 public sealed class SystemControlsService : IDisposable
 {
     /// <summary>
