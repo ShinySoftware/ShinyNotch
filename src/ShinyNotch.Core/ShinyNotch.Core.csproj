@@ -3,6 +3,7 @@
          services on top of the Platform interfaces. Plain net10.0, so the macOS, Windows and GTK heads all
          take it; each head supplies the Platform implementations. -->
     <PropertyGroup>
+        <UsesShinyAudio>true</UsesShinyAudio>
         <TargetFramework>net10.0</TargetFramework>
         <UseMaui>true</UseMaui>
         <SingleProject>true</SingleProject>
@@ -16,6 +17,7 @@
         <PackageReference Include="Shiny.Core" Version="6.3.1-beta-0001" />
         <PackageReference Include="Shiny.Extensions.Stores" Version="6.0.1" />
         <PackageReference Include="Shiny.Maui.Controls" Version="2.0.0-beta-0010" />
+        <PackageReference Include="Shiny.Maui.Controls.Camera" Version="2.0.0-beta-0010" />
         <PackageReference Include="Shiny.Maui.Controls.Desktop" Version="2.0.0-beta-0010" />
     </ItemGroup>
 

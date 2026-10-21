@@ -17,6 +17,10 @@
     <string>Shiny Notch shows the weather where you are.</string>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>Shiny Notch shows the weather where you are.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>Shiny Notch shows your camera as a mirror in the notch, and takes a photo when you ask.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Shiny Notch records voice notes from your microphone.</string>
     <key>NSCalendarsFullAccessUsageDescription</key>
     <string>Shiny Notch shows your upcoming events in the notch.</string>
     <key>NSCalendarsUsageDescription</key>

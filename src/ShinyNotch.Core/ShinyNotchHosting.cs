@@ -1,5 +1,6 @@
 using Shiny;
 using Shiny.Calendar;
+using Shiny.Maui.Controls.Camera;
 using ShinyNotch.Platform;
 using ShinyNotch.Services;
 
@@ -9,8 +10,8 @@ public static class ShinyNotchHosting
 {
     /// <summary>
     /// The notch, its window and everything shared behind it. The head registers the Platform
-    /// implementations and an <see cref="ICalendarStore"/> (Shiny.Calendar has none for plain net10.0),
-    /// and may register an <see cref="ICaptureTab"/>.
+    /// implementations, an <see cref="ICalendarStore"/> (Shiny.Calendar has none for plain net10.0) and
+    /// Shiny.Audio's services, and may register an <see cref="ICaptureTab"/> and call <see cref="UseNotchMirror"/>.
     /// </summary>
     public static MauiAppBuilder UseShinyNotch(this MauiAppBuilder builder)
     {
@@ -42,8 +43,23 @@ public static class ShinyNotchHosting
         builder.Services.AddSingleton<FileTrayService>();
         builder.Services.AddSingleton<TeleprompterService>();
         builder.Services.AddSingleton<WeatherService>();
+        builder.Services.AddSingleton<VoiceNotesService>();
         builder.Services.AddSingleton<NotchController>();
         builder.Services.AddTransient<SettingsPage>();
         return builder;
     }
+
+    /// <summary>
+    /// The Mirror tab, on a head with a camera handler (Shiny's CameraView has none on GTK). Without this
+    /// call there's no tab and no setting for it.
+    /// </summary>
+    public static MauiAppBuilder UseNotchMirror(this MauiAppBuilder builder)
+    {
+        builder.UseShinyCamera();
+        builder.Services.AddSingleton<MirrorSupport>();
+        return builder;
+    }
 }
+
+/// <summary>Registered by <see cref="ShinyNotchHosting.UseNotchMirror"/>: this head can show the camera.</summary>
+public sealed class MirrorSupport;

@@ -11,9 +11,11 @@ public static class MauiProgram
         var builder = MauiApp.CreateBuilder();
         builder
             .UseMauiApp<App>()
-            .UseShinyNotch();
+            .UseShinyNotch()
+            .UseNotchMirror();
 
         builder.Services.AddCalendarStore();
+        builder.Services.AddAudioServices();
         builder.Services.AddSingleton<IPlatformShell, WindowsPlatformShell>();
         builder.Services.AddSingleton<IPlatformUi, WindowsPlatformUi>();
         builder.Services.AddSingleton<IAudioControl, WindowsAudioControl>();

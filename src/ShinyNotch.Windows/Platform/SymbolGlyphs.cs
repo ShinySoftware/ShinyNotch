@@ -82,6 +82,17 @@ static class SymbolGlyphs
         ["doc.on.doc.fill"] = "",
         ["folder.fill"] = "",
         ["trash.fill"] = "",
+        ["trash"] = "\uE74D",
+        ["tray.and.arrow.down"] = "\uE896",
+
+        // Voice notes and the mirror
+        ["waveform"] = "\uE720",
+        ["mic"] = "\uE720",
+        ["mic.fill"] = "\uE720",
+        ["stop.fill"] = "\uE71A",
+        ["person.crop.square.fill"] = "\uE77B",
+        ["camera.fill"] = "\uE722",
+        ["arrow.triangle.2.circlepath.camera"] = "\uE89E",
         ["magnifyingglass"] = "",
         ["square.and.arrow.up"] = "",
 

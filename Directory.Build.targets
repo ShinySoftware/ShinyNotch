@@ -1,0 +1,27 @@
+<Project>
+    <!--
+        Shiny.Audio: the local project while microphone selection (AudioRecordingOptions.InputDevice) is
+        only on its feature branch, the package otherwise. The local project is used when the speech repo
+        sits beside this one (../speech) and has the target framework being built; the Windows TFM only
+        exists there when building on Windows.
+    -->
+    <PropertyGroup>
+        <ShinyAudioPackageVersion>3.0.0-beta-0030</ShinyAudioPackageVersion>
+        <ShinyAudioDir>$(MSBuildThisFileDirectory)../speech/src/audio/</ShinyAudioDir>
+        <UseLocalShinyAudio Condition="'$(UseLocalShinyAudio)' == '' And Exists('$(ShinyAudioDir)Shiny.Audio/Shiny.Audio.csproj') And ('$(TargetPlatformIdentifier)' != 'windows' Or $([MSBuild]::IsOSPlatform('windows')))">true</UseLocalShinyAudio>
+    </PropertyGroup>
+
+    <ItemGroup Condition="'$(UsesShinyAudio)' == 'true' And '$(UseLocalShinyAudio)' == 'true'">
+        <ProjectReference Include="$(ShinyAudioDir)Shiny.Audio/Shiny.Audio.csproj" />
+    </ItemGroup>
+    <ItemGroup Condition="'$(UsesShinyAudio)' == 'true' And '$(UseLocalShinyAudio)' != 'true'">
+        <PackageReference Include="Shiny.Audio" Version="$(ShinyAudioPackageVersion)" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(UsesShinyAudioLinux)' == 'true' And '$(UseLocalShinyAudio)' == 'true'">
+        <ProjectReference Include="$(ShinyAudioDir)Shiny.Audio.Linux/Shiny.Audio.Linux.csproj" />
+    </ItemGroup>
+    <ItemGroup Condition="'$(UsesShinyAudioLinux)' == 'true' And '$(UseLocalShinyAudio)' != 'true'">
+        <PackageReference Include="Shiny.Audio.Linux" Version="$(ShinyAudioPackageVersion)" />
+    </ItemGroup>
+</Project>

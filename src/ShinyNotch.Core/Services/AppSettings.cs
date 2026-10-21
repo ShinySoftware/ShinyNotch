@@ -98,16 +98,38 @@ public sealed class AppSettings
     }
 
     /// <summary>
-    /// The Capture tab, when the head has a capture tool and it is installed. Without one there's no tab
-    /// either way. Stored under its old name, from when the tool could only be macshot.
+    /// Tabs turned off in Settings, by name. Everything else shows (if the platform has it), so a tab
+    /// added in an update shows up on its own.
     /// </summary>
-    public bool ShowCaptureTab
+    public IReadOnlyList<string> HiddenTabs
     {
-        get => this.Bool(ShowCaptureTabKey, true);
-        set => this.Set(ShowCaptureTabKey, value);
+        // Before tabs could be hidden, only the macshot tab could be turned off, under its own switch.
+        get => this.List(nameof(this.HiddenTabs)) ?? (this.Bool(LegacyShowMacShotTab, true) ? [] : ["Capture"]);
+        set => this.Set(nameof(this.HiddenTabs), value.Distinct().ToArray());
     }
 
-    public const string ShowCaptureTabKey = "ShowMacShotTab";
+    const string LegacyShowMacShotTab = "ShowMacShotTab";
+
+    /// <summary>The microphone voice notes record from, by its device id; null is the system default.</summary>
+    public string? VoiceNoteInput
+    {
+        get => this.Text(nameof(this.VoiceNoteInput)) is { Length: > 0 } id ? id : null;
+        set => this.Set(nameof(this.VoiceNoteInput), value ?? "", notify: false);
+    }
+
+    /// <summary>The camera the mirror shows, by its id; null is the default camera.</summary>
+    public string? MirrorCamera
+    {
+        get => this.Text(nameof(this.MirrorCamera)) is { Length: > 0 } id ? id : null;
+        set => this.Set(nameof(this.MirrorCamera), value ?? "", notify: false);
+    }
+
+    /// <summary>The mirror's look, a <c>CameraFilter</c> name.</summary>
+    public string MirrorFilter
+    {
+        get => this.Text(nameof(this.MirrorFilter)) ?? "None";
+        set => this.Set(nameof(this.MirrorFilter), value, notify: false);
+    }
 
     /// <summary>Paths in the file tray, in the order they were dropped.</summary>
     public IReadOnlyList<string> TrayFiles

@@ -33,7 +33,7 @@ public sealed class SettingsPage : ContentPage
     /// <summary>Saves a script edit still waiting on its debounce.</summary>
     Action? flushScript;
 
-    public SettingsPage(AppSettings settings, CalendarService calendar, WeatherService weather, IEnumerable<ICaptureTab> captures, IPlatformShell shell, IAppStartupInstaller startup)
+    public SettingsPage(AppSettings settings, CalendarService calendar, WeatherService weather, NotchController notch, IPlatformShell shell, IAppStartupInstaller startup)
     {
         this.Title = "Shiny Notch";
         this.BackgroundColor = Ui.Surface;
@@ -62,7 +62,8 @@ public sealed class SettingsPage : ContentPage
         };
 
         var sections = table.Root.Sections;
-        sections.Add(this.NotchSection(settings, captures.FirstOrDefault()));
+        sections.Add(this.NotchSection(settings));
+        sections.Add(TabsSection(settings, notch.AvailableTabs));
         sections.Add(this.TeleprompterSection(settings));
         // Nothing to ask for where the platform can't locate: the places are the whole story.
         if (!weather.IsLocationUnavailable)
@@ -91,7 +92,7 @@ public sealed class SettingsPage : ContentPage
     // Sections
     // ---------------------------------------------------------------------------------------------
 
-    TableSection NotchSection(AppSettings settings, ICaptureTab? capture)
+    TableSection NotchSection(AppSettings settings)
     {
         var section = Section("Notch", "The size of the closed notch, either side of the camera. Each side still grows to fit what it's showing: what's playing on the left; the weather, a countdown or a meeting on the right. At 0 and 0 with nothing to show, it's just the camera.");
         section.HeaderView = Intro();
@@ -134,10 +135,39 @@ public sealed class SettingsPage : ContentPage
         section.Cells.Add(Switch("Show the new song when it changes", "music.note", Ui.Red, settings.ShowTrackChanges, v => settings.ShowTrackChanges = v));
         section.Cells.Add(Switch("Show volume changes", "speaker.wave.2.fill", Ui.Pink, settings.ShowVolumeHud, v => settings.ShowVolumeHud = v));
         section.Cells.Add(Switch("Show brightness changes", "sun.max.fill", Ui.Yellow, settings.ShowBrightnessHud, v => settings.ShowBrightnessHud = v));
-        // Only offered with the capture tool installed: without it the tab doesn't show, whatever this says.
-        if (capture is { IsAvailable: true })
-            section.Cells.Add(Switch($"Show the {capture.Name} tab", "camera.viewfinder", Ui.Purple, settings.ShowCaptureTab, v => settings.ShowCaptureTab = v));
+        return section;
+    }
 
+    /// <summary>
+    /// A switch for every tab this platform has. The strip spreads whatever is left across the room beside
+    /// the camera. The last tab on can't be turned off: an empty strip would leave nothing to open.
+    /// </summary>
+    static TableSection TabsSection(AppSettings settings, IReadOnlyList<NotchTabInfo> tabs)
+    {
+        var section = Section("Tabs", "Turn off the tabs you don't use. The rest spread out to fill the strip.");
+        foreach (var t in tabs)
+        {
+            var name = t.Tab.ToString();
+            var cell = new SwitchCell { Title = t.Name, On = !settings.HiddenTabs.Contains(name), IconSource = Ui.SymbolSource(t.Symbol, 16, Ui.Blue), IsSelectable = false };
+            cell.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName != SwitchCell.OnProperty.PropertyName)
+                    return;
+
+                var hidden = settings.HiddenTabs.Where(h => h != name).ToList();
+                if (!cell.On)
+                {
+                    if (tabs.All(other => other.Tab == t.Tab || hidden.Contains(other.Tab.ToString())))
+                    {
+                        cell.On = true;
+                        return;
+                    }
+                    hidden.Add(name);
+                }
+                settings.HiddenTabs = hidden;
+            };
+            section.Cells.Add(cell);
+        }
         return section;
     }
 

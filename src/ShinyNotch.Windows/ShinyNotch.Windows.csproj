@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
+        <UsesShinyAudio>true</UsesShinyAudio>
         <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
         <!-- Lets the head be compile-checked off Windows: -t:Compile stops before MakePri, which only runs on Windows. -->
         <EnableWindowsTargeting>true</EnableWindowsTargeting>
@@ -45,6 +46,7 @@
         <PackageReference Include="Shiny.Core" Version="6.3.1-beta-0001" />
         <PackageReference Include="Shiny.Extensions.Stores" Version="6.0.1" />
         <PackageReference Include="Shiny.Maui.Controls" Version="2.0.0-beta-0010" />
+        <PackageReference Include="Shiny.Maui.Controls.Camera" Version="2.0.0-beta-0010" />
         <PackageReference Include="Shiny.Maui.Controls.Desktop" Version="2.0.0-beta-0010" />
     </ItemGroup>
 </Project>

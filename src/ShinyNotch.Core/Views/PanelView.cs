@@ -7,42 +7,47 @@ public enum NotchTab
     Tray,
     Stats,
     Capture,
+    Mirror,
+    Notes,
     Calendar,
     Timer,
     Prompter
 }
 
+/// <summary>A tab as the strip and Settings show it.</summary>
+public sealed record NotchTabInfo(NotchTab Tab, string Symbol, string Name)
+{
+    /// <summary>Every tab, in strip order. Whether one shows depends on the platform and on Settings.</summary>
+    public static readonly IReadOnlyList<NotchTabInfo> All =
+    [
+        new(NotchTab.Media, "music.note", "Now Playing"),
+        new(NotchTab.Weather, "cloud.sun.fill", "Weather"),
+        new(NotchTab.Tray, "tray.and.arrow.down.fill", "File Tray"),
+        new(NotchTab.Stats, "cpu", "System"),
+        new(NotchTab.Capture, "camera.viewfinder", "Capture"),
+        new(NotchTab.Mirror, "person.crop.square.fill", "Mirror"),
+        new(NotchTab.Notes, "waveform", "Voice Notes"),
+        new(NotchTab.Calendar, "calendar", "Calendar"),
+        new(NotchTab.Timer, "timer", "Timer"),
+        new(NotchTab.Prompter, "text.alignleft", "Teleprompter")
+    ];
+}
+
 /// <summary>
-/// The expanded notch. The tab strip sits in the band beside the camera (four either side of it, counting
-/// pin and settings, five with Capture), the selected tab's body hangs below, and the <see cref="ControlsBar"/>
-/// closes every tab.
+/// The expanded notch. The tab strip sits in the band beside the camera, split as evenly as it goes either
+/// side of it (pin and settings close the right side), the selected tab's body hangs below, and the
+/// <see cref="ControlsBar"/> closes every tab.
 /// </summary>
-sealed class PanelView : Grid, ILiveView
+sealed class PanelView : Grid, ILiveView, IDisposable
 {
     const double TabSymbol = 14;
-    /// <summary>Calendar, Timer and Teleprompter sit right of the camera, before pin and settings.</summary>
-    const int RightTabs = 3;
-
-    static readonly (NotchTab Tab, string Symbol, string Name)[] Tabs =
-    [
-        (NotchTab.Media, "music.note", "Now Playing"),
-        (NotchTab.Weather, "cloud.sun.fill", "Weather"),
-        (NotchTab.Tray, "tray.and.arrow.down.fill", "File Tray"),
-        (NotchTab.Stats, "cpu", "System"),
-        (NotchTab.Capture, "camera.viewfinder", "Capture"),
-        (NotchTab.Calendar, "calendar", "Calendar"),
-        (NotchTab.Timer, "timer", "Timer"),
-        (NotchTab.Prompter, "text.alignleft", "Teleprompter")
-    ];
 
     public View Body { get; }
 
     public ControlsBar Controls { get; }
 
-    /// <param name="captureName">
-    /// The capture tool's name when the Capture tab shows (the tool is installed and its tab is on), else null.
-    /// </param>
-    public PanelView(NotchTab selected, View body, ControlsBar controls, double cutoutWidth, double bandHeight, bool pinned, string? captureName, Action<NotchTab> select, Action togglePin, Action openSettings)
+    /// <param name="tabs">The tabs to show: the ones this platform has and Settings hasn't turned off.</param>
+    public PanelView(NotchTab selected, IReadOnlyList<NotchTabInfo> tabs, View body, ControlsBar controls, double cutoutWidth, double bandHeight, bool pinned, Action<NotchTab> select, Action togglePin, Action openSettings)
     {
         this.Body = body;
         this.Controls = controls;
@@ -56,27 +61,26 @@ sealed class PanelView : Grid, ILiveView
         ];
         this.RowSpacing = 10;
 
-        var tabs = Tabs
-            .Where(t => t.Tab != NotchTab.Capture || captureName != null)
-            .Select(t => t.Tab == NotchTab.Capture ? t with { Name = captureName! } : t)
-            .ToList();
-        var leftTabs = tabs.Take(tabs.Count - RightTabs).ToList();
-        var rightTabs = tabs.Skip(tabs.Count - RightTabs).ToList();
+        // Half the buttons (pin and settings count) left of the camera, the left taking the odd one out.
+        var leftCount = Math.Min(tabs.Count, (tabs.Count + 3) / 2);
+        var leftTabs = tabs.Take(leftCount).ToList();
+        var rightTabs = tabs.Skip(leftCount).ToList();
 
-        // Buttons get the room there is between the panel's edge and the camera: five a side only fit
-        // with less padding than four.
+        // Buttons get the room there is between the panel's edge and the camera: the more a side holds,
+        // the less padding each gets, and past five a side the symbols shrink a little too.
         var perSide = Math.Max(leftTabs.Count, rightTabs.Count + 2);
+        var symbolSize = perSide > 5 ? TabSymbol - 2 : TabSymbol;
         var room = (Ui.ContentWidth - Math.Max(cutoutWidth, 8)) / 2;
-        var inset = Math.Clamp(Math.Floor((room / perSide - Ui.SymbolBox(TabSymbol)) / 2), 2, 5);
+        var inset = Math.Clamp(Math.Floor((room / perSide - Ui.SymbolBox(symbolSize)) / 2), 1, 5);
 
         // The selected tab sits on a pill; the pin only changes colour, since it's a switch, not a place.
         // The others are secondary grey, not tertiary: on black, tertiary was too faint to find.
         View Tab(string symbol, Action tapped, bool on, string hint, Color? onColor = null, bool pill = true)
-            => Ui.SymbolButton(symbol, tapped, TabSymbol, on ? onColor ?? Ui.Text : Ui.Secondary, hint, on && pill ? Ui.Raised : null, padding: new Thickness(inset, 4));
+            => Ui.SymbolButton(symbol, tapped, symbolSize, on ? onColor ?? Ui.Text : Ui.Secondary, hint, on && pill ? Ui.Raised : null, padding: new Thickness(inset, 4));
 
-        HorizontalStackLayout Strip(IEnumerable<(NotchTab Tab, string Symbol, string Name)> tabs, LayoutOptions align)
+        HorizontalStackLayout Strip(IEnumerable<NotchTabInfo> tabs, LayoutOptions align)
         {
-            // No spacing: four or five tabs a side have to fit between the panel edge and the camera.
+            // No spacing: up to six a side have to fit between the panel edge and the camera.
             var strip = new HorizontalStackLayout { Spacing = 0, HorizontalOptions = align, VerticalOptions = LayoutOptions.Center };
             foreach (var t in tabs)
             {
@@ -102,4 +106,6 @@ sealed class PanelView : Grid, ILiveView
         (this.Body as ILiveView)?.Tick();
         this.Controls.Tick();
     }
+
+    public void Dispose() => (this.Body as IDisposable)?.Dispose();
 }

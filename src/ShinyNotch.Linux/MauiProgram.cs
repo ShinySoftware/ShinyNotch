@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Platforms.Linux.Gtk4.Essentials.Hosting;
 using Microsoft.Maui.Platforms.Linux.Gtk4.Hosting;
+using Shiny;
 using Shiny.Calendar;
 using ShinyNotch.Linux;
 using ShinyNotch.Platform;
@@ -19,6 +20,9 @@ public static class MauiProgram
             .UseMauiAppLinuxGtk4<App>()
             .AddLinuxGtk4Essentials()
             .UseShinyNotch();
+
+        // Before anything else from Shiny.Audio: PulseAudio/PipeWire capture and playback for voice notes.
+        builder.Services.AddLinuxAudio();
 
         // Shiny.Calendar has no store for plain net10.0; this one says so, and the calendar steps aside.
         builder.Services.AddSingleton<ICalendarStore, UnsupportedCalendarStore>();

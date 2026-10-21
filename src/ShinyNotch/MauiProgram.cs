@@ -21,9 +21,11 @@ public static class MauiProgram
         builder
             .UseMauiAppMacOS<App>()
             .AddMacOSEssentials()
-            .UseShinyNotch();
+            .UseShinyNotch()
+            .UseNotchMirror();
 
         builder.Services.AddCalendarStore();
+        builder.Services.AddAudioServices();
         builder.Services.AddSingleton<IPlatformShell, MacPlatformShell>();
         builder.Services.AddSingleton<IPlatformUi, MacPlatformUi>();
         builder.Services.AddSingleton<IAudioControl, MacAudioControl>();

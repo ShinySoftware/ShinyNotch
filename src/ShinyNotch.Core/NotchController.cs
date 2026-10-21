@@ -58,6 +58,8 @@ public sealed class NotchController
     readonly FileTrayService tray;
     readonly TeleprompterService prompter;
     readonly WeatherService weather;
+    readonly VoiceNotesService notes;
+    readonly bool hasMirror;
     readonly ICaptureTab? capture;
     readonly IPlatformShell shell;
     readonly IDispatcher dispatcher;
@@ -97,6 +99,8 @@ public sealed class NotchController
         FileTrayService tray,
         TeleprompterService prompter,
         WeatherService weather,
+        VoiceNotesService notes,
+        IEnumerable<MirrorSupport> mirror,
         IEnumerable<ICaptureTab> captures,
         IPlatformShell shell,
         IDispatcher dispatcher,
@@ -113,6 +117,8 @@ public sealed class NotchController
         this.tray = tray;
         this.prompter = prompter;
         this.weather = weather;
+        this.notes = notes;
+        this.hasMirror = mirror.Any();
         this.capture = captures.FirstOrDefault();
         this.shell = shell;
         this.dispatcher = dispatcher;
@@ -123,11 +129,31 @@ public sealed class NotchController
     /// <summary>Opens Settings. Set by the app, which owns the window.</summary>
     public Action? OpenSettings { get; set; }
 
-    /// <summary>The Capture tab is in the strip: the head has a capture tool, it is installed, and its tab is turned on.</summary>
-    bool ShowCapture => this.settings.ShowCaptureTab && this.capture is { IsAvailable: true };
+    /// <summary>The tabs this platform has, with the capture tool's own name on the Capture tab.</summary>
+    public IReadOnlyList<NotchTabInfo> AvailableTabs => NotchTabInfo.All
+        .Where(t => t.Tab switch
+        {
+            NotchTab.Capture => this.capture is { IsAvailable: true },
+            NotchTab.Mirror => this.hasMirror,
+            _ => true
+        })
+        .Select(t => t.Tab == NotchTab.Capture ? t with { Name = this.capture!.Name } : t)
+        .ToList();
+
+    /// <summary>The tabs in the strip: the ones this platform has, less those turned off in Settings.</summary>
+    IReadOnlyList<NotchTabInfo> ShownTabs
+    {
+        get
+        {
+            var hidden = this.settings.HiddenTabs;
+            var shown = this.AvailableTabs.Where(t => !hidden.Contains(t.Tab.ToString())).ToList();
+            // Settings never turns off the last one, but a tab the platform lost (macshot uninstalled) can.
+            return shown.Count > 0 ? shown : [NotchTabInfo.All[0]];
+        }
+    }
 
     /// <summary>The notch should stay open even when the pointer leaves.</summary>
-    bool IsPinned => this.pinnedByUser || this.dragging || this.prompter.IsRunning;
+    bool IsPinned => this.pinnedByUser || this.dragging || this.prompter.IsRunning || this.notes.IsRecording;
 
     public async Task StartAsync()
     {
@@ -192,6 +218,14 @@ public sealed class NotchController
         };
         this.controls.ChangedExternally += (_, kind) => this.ShowHud(kind);
         this.weather.Changed += (_, _) => this.Rebuild(NotchTab.Weather);
+        this.notes.Changed += (_, _) =>
+        {
+            this.Rebuild(NotchTab.Notes);
+            this.ScheduleTick();
+            // A recording keeps the panel open; once it's done, the panel goes back to closing on its own.
+            if (!this.notes.IsRecording)
+                this.ScheduleClose();
+        };
         if (this.capture != null)
             this.capture.Changed += (_, _) => this.Rebuild(NotchTab.Capture);
         this.shell.ScreensChanged += (_, _) => this.OnScreensChanged();
@@ -201,10 +235,10 @@ public sealed class NotchController
             if (key is nameof(AppSettings.TeleprompterScript) or nameof(AppSettings.TeleprompterFontSize))
                 this.Rebuild(NotchTab.Prompter);
             // The tab strip changes. Turned off while showing it, the panel moves to Now Playing.
-            else if (key is AppSettings.ShowCaptureTabKey && this.mode == Mode.Panel)
+            else if (key is nameof(AppSettings.HiddenTabs) && this.mode == Mode.Panel)
             {
-                if (this.tab == NotchTab.Capture && !this.ShowCapture)
-                    this.Open(NotchTab.Media);
+                if (this.ShownTabs.All(t => t.Tab != this.tab))
+                    this.Open(this.ShownTabs[0].Tab);
                 else
                     _ = this.RenderAsync();
             }
@@ -339,9 +373,10 @@ public sealed class NotchController
 
     void Open(NotchTab tab)
     {
-        // The capture tool was uninstalled, or its tab turned off, since the Capture tab was last open.
-        if (tab == NotchTab.Capture && !this.ShowCapture)
-            tab = NotchTab.Media;
+        // The tab was turned off, or the platform lost it (macshot uninstalled), since it was last open.
+        var shown = this.ShownTabs;
+        if (shown.All(t => t.Tab != tab))
+            tab = shown[0].Tab;
         if (tab == NotchTab.Capture)
             this.capture?.Opened();
         this.tab = tab;
@@ -482,6 +517,10 @@ public sealed class NotchController
             return;
         this.shownKey = key;
 
+        // What's on screen now is about to be replaced. Something that holds on to more than views (the
+        // mirror's camera, a level meter's subscription) lets go once its replacement is up.
+        var previous = this.live;
+
         switch (this.mode)
         {
             case Mode.Peek:
@@ -505,6 +544,9 @@ public sealed class NotchController
                 (panel.Body as PrompterTab)?.Scroll();
                 break;
         }
+
+        if (!ReferenceEquals(previous, this.live))
+            (previous as IDisposable)?.Dispose();
     }
 
     PeekView? BuildPeek()
@@ -524,12 +566,14 @@ public sealed class NotchController
             NotchTab.Calendar => new CalendarTab(this.calendar, this.time, this.shell, () => _ = this.RenderAsync()),
             NotchTab.Timer => new TimerTab(this.countdown),
             NotchTab.Capture when this.capture != null => this.capture.Build(this.FoldAway),
+            NotchTab.Mirror => new MirrorTab(this.settings, this.tray),
+            NotchTab.Notes => new NotesTab(this.notes, this.tray),
             _ => new PrompterTab(this.prompter, () => this.OpenSettings?.Invoke())
         };
 
         var cutout = this.notch.HardwareNotchSize;
         var controls = new ControlsBar(this.media, this.controls, showPlay: this.tab != NotchTab.Media);
-        return new PanelView(this.tab, body, controls, cutout.Width, Math.Max(cutout.Height, 32), this.pinnedByUser, this.ShowCapture ? this.capture!.Name : null, this.Open, this.TogglePin, () => this.OpenSettings?.Invoke());
+        return new PanelView(this.tab, this.ShownTabs, body, controls, cutout.Width, Math.Max(cutout.Height, 32), this.pinnedByUser, this.Open, this.TogglePin, () => this.OpenSettings?.Invoke());
     }
 
     TrayTab BuildTray()
@@ -575,6 +619,7 @@ public sealed class NotchController
             NotchTab.Stats => true,
             // Watching for the capture tool's state (a recording starting or ending).
             NotchTab.Capture => true,
+            NotchTab.Notes => this.notes.IsRecording,
             _ => false
         });
 

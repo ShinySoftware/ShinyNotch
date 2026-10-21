@@ -9,6 +9,11 @@
     <!-- NSAppleScript to Music and Spotify. -->
     <key>com.apple.security.automation.apple-events</key>
     <true/>
+    <!-- The Mirror tab, and voice notes. -->
+    <key>com.apple.security.device.camera</key>
+    <true/>
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
     <key>com.apple.security.personal-information.calendars</key>
     <true/>
     <key>com.apple.security.personal-information.location</key>
