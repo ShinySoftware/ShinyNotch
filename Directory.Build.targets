@@ -6,7 +6,7 @@
         exists there when building on Windows.
     -->
     <PropertyGroup>
-        <ShinyAudioPackageVersion>3.0.0-beta-0030</ShinyAudioPackageVersion>
+        <ShinyAudioPackageVersion>3.0.0-beta-0032</ShinyAudioPackageVersion>
         <ShinyAudioDir>$(MSBuildThisFileDirectory)../speech/src/audio/</ShinyAudioDir>
         <UseLocalShinyAudio Condition="'$(UseLocalShinyAudio)' == '' And Exists('$(ShinyAudioDir)Shiny.Audio/Shiny.Audio.csproj') And ('$(TargetPlatformIdentifier)' != 'windows' Or $([MSBuild]::IsOSPlatform('windows')))">true</UseLocalShinyAudio>
     </PropertyGroup>
