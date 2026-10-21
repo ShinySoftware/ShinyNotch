@@ -132,9 +132,14 @@ static class Ui
 
     /// <summary>
     /// Makes a surface a button: it lightens while the pointer is over it, and dims for a moment when
-    /// clicked. The AppKit head reports pointer enter and exit but not the press itself, so the click
-    /// shows as a flash rather than a held-down state. Both only change colour and opacity, in place.
+    /// clicked. Nothing reports the press itself, so the click shows as a flash rather than a held-down
+    /// state. Both only change colour and opacity, in place.
     /// </summary>
+    /// <remarks>
+    /// Hover comes from a tracking area of our own on the native view, not a PointerGestureRecognizer:
+    /// the AppKit head only forwards pointer events from its container views (a Border's view isn't one),
+    /// and only in the key window, which the notch never is.
+    /// </remarks>
     public static T Pressable<T>(this T button, Action tapped) where T : Border
     {
         var rest = button.BackgroundColor ?? Colors.Transparent;
@@ -142,10 +147,19 @@ static class Ui
             ? Colors.White.WithAlpha(0.1f)
             : new Color(rest.Red + (1 - rest.Red) * 0.12f, rest.Green + (1 - rest.Green) * 0.12f, rest.Blue + (1 - rest.Blue) * 0.12f, rest.Alpha);
 
-        var pointer = new PointerGestureRecognizer();
-        pointer.PointerEntered += (_, _) => button.BackgroundColor = hover;
-        pointer.PointerExited += (_, _) => button.BackgroundColor = rest;
-        button.GestureRecognizers.Add(pointer);
+        // Captured by the button's HandlerChanged handler, so it lives as long as the button: a tracking
+        // area doesn't retain its owner.
+        var tracker = new HoverTracker(over => button.BackgroundColor = over ? hover : rest);
+        button.HandlerChanged += (_, _) =>
+        {
+            if (button.Handler?.PlatformView is NSView view)
+                view.AddTrackingArea(new NSTrackingArea(
+                    CGRect.Empty,
+                    NSTrackingAreaOptions.MouseEnteredAndExited | NSTrackingAreaOptions.MouseMoved |
+                    NSTrackingAreaOptions.ActiveAlways | NSTrackingAreaOptions.InVisibleRect,
+                    tracker,
+                    null));
+        };
 
         button.GestureRecognizers.Add(new TapGestureRecognizer
         {
@@ -319,6 +333,29 @@ static class Ui
         Grid.SetRowSpan(view, rowSpan);
         Grid.SetColumnSpan(view, columnSpan);
         return view;
+    }
+}
+
+/// <summary>
+/// Receives a tracking area's enter and exit. Moves count as being over too: a view built under a pointer
+/// that is already there gets no enter, which is every rebuild after a click.
+/// </summary>
+sealed class HoverTracker(Action<bool> changed) : NSResponder
+{
+    bool over;
+
+    public override void MouseEntered(NSEvent theEvent) => this.Set(true);
+
+    public override void MouseExited(NSEvent theEvent) => this.Set(false);
+
+    public override void MouseMoved(NSEvent theEvent) => this.Set(true);
+
+    void Set(bool value)
+    {
+        if (value == this.over)
+            return;
+        this.over = value;
+        changed(value);
     }
 }
 

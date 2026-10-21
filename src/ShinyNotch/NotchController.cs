@@ -114,6 +114,9 @@ public sealed class NotchController
     /// <summary>Opens Settings. Set by the app, which owns the window.</summary>
     public Action? OpenSettings { get; set; }
 
+    /// <summary>The Capture tab is in the strip: macshot is installed and its tab is turned on.</summary>
+    bool ShowCapture => this.settings.ShowMacShotTab && this.macshot.IsInstalled;
+
     /// <summary>The notch should stay open even when the pointer leaves.</summary>
     bool IsPinned => this.pinnedByUser || this.dragging || this.prompter.IsRunning;
 
@@ -189,6 +192,14 @@ public sealed class NotchController
         {
             if (key is nameof(AppSettings.TeleprompterScript) or nameof(AppSettings.TeleprompterFontSize))
                 this.Rebuild(NotchTab.Prompter);
+            // The tab strip changes. Turned off while showing it, the panel moves to Now Playing.
+            else if (key is nameof(AppSettings.ShowMacShotTab) && this.mode == Mode.Panel)
+            {
+                if (this.tab == NotchTab.Capture && !this.ShowCapture)
+                    this.Open(NotchTab.Media);
+                else
+                    _ = this.RenderAsync();
+            }
         };
 
         this.media.Start();
@@ -278,8 +289,8 @@ public sealed class NotchController
 
     void Open(NotchTab tab)
     {
-        // macshot was uninstalled since the Capture tab was last open.
-        if (tab == NotchTab.Capture && !this.macshot.IsInstalled)
+        // macshot was uninstalled, or its tab turned off, since the Capture tab was last open.
+        if (tab == NotchTab.Capture && !this.ShowCapture)
             tab = NotchTab.Media;
         if (tab == NotchTab.Capture)
         {
@@ -440,7 +451,7 @@ public sealed class NotchController
 
         var cutout = this.notch.HardwareNotchSize;
         var controls = new ControlsBar(this.media, this.controls, showPlay: this.tab != NotchTab.Media);
-        return new PanelView(this.tab, body, controls, cutout.Width, Math.Max(cutout.Height, 32), this.pinnedByUser, this.macshot.IsInstalled, this.Open, this.TogglePin, () => this.OpenSettings?.Invoke());
+        return new PanelView(this.tab, body, controls, cutout.Width, Math.Max(cutout.Height, 32), this.pinnedByUser, this.ShowCapture, this.Open, this.TogglePin, () => this.OpenSettings?.Invoke());
     }
 
     /// <summary>

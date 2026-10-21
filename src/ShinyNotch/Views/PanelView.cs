@@ -39,7 +39,7 @@ sealed class PanelView : Grid, ILiveView
 
     public ControlsBar Controls { get; }
 
-    /// <param name="showCapture">macshot is installed, so the Capture tab has something to drive.</param>
+    /// <param name="showCapture">macshot is installed (so the Capture tab has something to drive) and its tab is on.</param>
     public PanelView(NotchTab selected, View body, ControlsBar controls, double cutoutWidth, double bandHeight, bool pinned, bool showCapture, Action<NotchTab> select, Action togglePin, Action openSettings)
     {
         this.Body = body;

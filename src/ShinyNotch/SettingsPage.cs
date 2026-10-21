@@ -17,7 +17,7 @@ public sealed class SettingsPage : ContentPage
     /// <summary>Saves a script edit still waiting on its debounce.</summary>
     Action? flushScript;
 
-    public SettingsPage(AppSettings settings, CalendarService calendar, WeatherService weather, IAppStartupInstaller startup)
+    public SettingsPage(AppSettings settings, CalendarService calendar, WeatherService weather, MacShotService macshot, IAppStartupInstaller startup)
     {
         this.Title = "Shiny Notch";
         this.BackgroundColor = Color.FromArgb("#18181B");
@@ -93,6 +93,19 @@ public sealed class SettingsPage : ContentPage
 
         var launchAtLogin = LaunchAtLogin(startup, Note);
 
+        var notch = new VerticalStackLayout
+        {
+            Spacing = 10,
+            Children =
+            {
+                Toggle("Show volume changes in the notch", settings.ShowVolumeHud, v => settings.ShowVolumeHud = v),
+                Toggle("Show brightness changes in the notch", settings.ShowBrightnessHud, v => settings.ShowBrightnessHud = v)
+            }
+        };
+        // Only offered with macshot installed: without it the tab doesn't show, whatever this says.
+        if (macshot.IsInstalled)
+            notch.Children.Add(Toggle("Show the macshot tab", settings.ShowMacShotTab, v => settings.ShowMacShotTab = v));
+
         var quit = new Button { Text = "Quit Shiny Notch", HorizontalOptions = LayoutOptions.Start };
         quit.Clicked += (_, _) => AppKit.NSApplication.SharedApplication.Terminate(null);
 
@@ -116,8 +129,7 @@ public sealed class SettingsPage : ContentPage
                     Stepper("Speed (points per second)", settings.TeleprompterSpeed, 5, 200, 4, v => settings.TeleprompterSpeed = v),
 
                     Heading("Notch"),
-                    Toggle("Show volume changes in the notch", settings.ShowVolumeHud, v => settings.ShowVolumeHud = v),
-                    Toggle("Show brightness changes in the notch", settings.ShowBrightnessHud, v => settings.ShowBrightnessHud = v),
+                    notch,
 
                     Heading("Weather"),
                     weatherSection,
