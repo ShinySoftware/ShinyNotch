@@ -80,6 +80,13 @@ public sealed class AppSettings
         set => this.Set(nameof(this.NotchExtraHeight), Math.Clamp(Math.Round(value), 0, MaxNotchExtraHeight));
     }
 
+    /// <summary>The notch opens on a click instead of on hover. It still folds away when the pointer leaves.</summary>
+    public bool ClickToOpen
+    {
+        get => this.Bool(nameof(this.ClickToOpen), false);
+        set => this.Set(nameof(this.ClickToOpen), value);
+    }
+
     public bool ShowVolumeHud
     {
         get => this.Bool(nameof(this.ShowVolumeHud), true);
@@ -186,6 +193,13 @@ public sealed class AppSettings
     {
         get => this.Bool(nameof(this.LoginItemSetUp), false);
         set => this.Set(nameof(this.LoginItemSetUp), value, notify: false);
+    }
+
+    /// <summary>The release "Don't show again" was ticked for, by version; a newer release asks again.</summary>
+    public string? SkippedUpdate
+    {
+        get => this.Text(nameof(this.SkippedUpdate)) is { Length: > 0 } version ? version : null;
+        set => this.Set(nameof(this.SkippedUpdate), value ?? "", notify: false);
     }
 
     public string LastTab

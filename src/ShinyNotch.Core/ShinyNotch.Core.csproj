@@ -22,6 +22,7 @@
         <PackageReference Include="Shiny.Maui.Controls.Camera" Version="2.0.0-beta-0010" />
         <PackageReference Include="Shiny.Maui.Controls.Camera.Barcode" Version="2.0.0-beta-0010" />
         <PackageReference Include="Shiny.Maui.Controls.Desktop" Version="2.0.0-beta-0010" />
+        <PackageReference Include="Shiny.Maui.Controls.Markdown" Version="2.0.0-beta-0010" />
     </ItemGroup>
 
     <ItemGroup>

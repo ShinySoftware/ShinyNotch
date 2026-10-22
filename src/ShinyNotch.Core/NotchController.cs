@@ -170,6 +170,7 @@ public sealed class NotchController
     {
         this.notch.PointerEntered += (_, _) => this.OnPointer(true);
         this.notch.PointerExited += (_, _) => this.OnPointer(false);
+        this.notch.Tapped += (_, _) => this.OnTapped();
 
         this.fileDrop.DragEnter += (_, e) =>
         {
@@ -330,9 +331,13 @@ public sealed class NotchController
 
     void OnPointer(bool over)
     {
+        // Either way a pending close is called off; with click to open, coming back is all hovering does.
         var token = ++this.hoverToken;
         if (over)
         {
+            if (this.settings.ClickToOpen)
+                return;
+
             this.dispatcher.DispatchDelayed(HoverOpenDelay, () =>
             {
                 if (token == this.hoverToken && this.notch.IsPointerOver && this.mode != Mode.Panel)
@@ -343,6 +348,13 @@ public sealed class NotchController
         {
             this.ScheduleClose();
         }
+    }
+
+    /// <summary>With click to open, a click on the peek (or a HUD) opens the panel. Hovering opens it otherwise.</summary>
+    void OnTapped()
+    {
+        if (this.settings.ClickToOpen && this.mode != Mode.Panel)
+            this.Open(this.tab);
     }
 
     void ScheduleClose(TimeSpan? delay = null)

@@ -12,14 +12,19 @@ public sealed class App : Application
     readonly IServiceProvider services;
     readonly NotchController notch;
     readonly IPlatformShell shell;
+    readonly Services.UpdateService updates;
     Window? settingsWindow;
+    Window? updateWindow;
     bool started;
 
-    public App(IServiceProvider services, NotchController notch, IPlatformShell shell, IPlatformUi ui)
+    public App(IServiceProvider services, NotchController notch, IPlatformShell shell, IPlatformUi ui, Services.UpdateService updates)
     {
         this.services = services;
         this.notch = notch;
         this.shell = shell;
+        this.updates = updates;
+        this.updates.Found += (_, release) => this.ShowUpdate(release);
+        this.updates.ShowRelease = this.ShowUpdate;
         Views.Ui.Platform = ui;
         this.notch.OpenSettings = this.ShowSettings;
         this.UserAppTheme = AppTheme.Dark;
@@ -42,6 +47,7 @@ public sealed class App : Application
             this.started = true;
             await this.notch.StartAsync();
             _ = this.SetUpLoginItemOnceAsync();
+            this.updates.Start();
 #if DEBUG
             // --open <Tab>: start with the panel pinned open on a tab, for driving the UI without a mouse.
             var args = Environment.GetCommandLineArgs();
@@ -82,6 +88,32 @@ public sealed class App : Application
 
         if (this.settingsWindow != null)
             this.shell.Present(this.settingsWindow);
+    }
+
+    /// <summary>
+    /// The release notes and Install, in a window of their own: found by a check, or asked for from
+    /// Settings. One at a time - a newer release replaces the one showing.
+    /// </summary>
+    public void ShowUpdate(Services.AppRelease release)
+    {
+        this.notch.FoldAway();
+        if (this.updateWindow != null)
+            this.CloseWindow(this.updateWindow);
+
+        var window = new Window(new UpdatePage(this.updates, release))
+        {
+            Title = "Shiny Notch Update",
+            Width = 560,
+            Height = 620
+        };
+        window.Destroying += (_, _) =>
+        {
+            if (this.updateWindow == window)
+                this.updateWindow = null;
+        };
+        this.updateWindow = window;
+        this.OpenWindow(window);
+        this.shell.Present(window);
     }
 
     /// <summary>

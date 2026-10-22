@@ -34,6 +34,9 @@ static class SymbolGlyphs
         ["speaker.wave.2.fill"] = "",
         ["speaker.wave.3.fill"] = "",
 
+        // Settings
+        ["cursorarrow.click"] = "",
+
         // Display
         ["sun.max.fill"] = Sun,
         ["sun.min.fill"] = "",

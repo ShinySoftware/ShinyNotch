@@ -82,6 +82,7 @@ jobs:
           -p:CodesignKey="$SIGNING_IDENTITY"
           -p:ApplicationDisplayVersion="$APP_VERSION"
           -p:ApplicationVersion="${{ github.run_number }}"
+          -p:InformationalVersion="$VERSION"
 
       - name: Verify signature
         run: codesign --verify --deep --strict --verbose=2 "$APP_PATH"

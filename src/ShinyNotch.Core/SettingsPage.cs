@@ -35,8 +35,14 @@ public sealed class SettingsPage : ContentPage
     /// <summary>Saves a script edit still waiting on its debounce.</summary>
     Action? flushScript;
 
-    public SettingsPage(AppSettings settings, CalendarService calendar, WeatherService weather, NotchController notch, IPlatformShell shell, IAppStartupInstaller startup)
+    readonly UpdateService updates;
+    /// <summary>The release the Update section was built for, so only a different one rebuilds the page.</summary>
+    readonly string? shownUpdate;
+
+    public SettingsPage(AppSettings settings, CalendarService calendar, WeatherService weather, NotchController notch, IPlatformShell shell, IAppStartupInstaller startup, UpdateService updates)
     {
+        this.updates = updates;
+        this.shownUpdate = updates.Available?.Version;
         this.Title = "Shiny Notch";
         this.BackgroundColor = Ui.Surface;
 
@@ -64,7 +70,11 @@ public sealed class SettingsPage : ContentPage
         };
 
         var sections = table.Root.Sections;
+        // A pending update comes first, and takes the page's intro as its header.
+        if (UpdateSection(updates) is { } update)
+            sections.Add(update);
         sections.Add(this.NotchSection(settings));
+        sections[0].HeaderView = Intro(sections[0].Title);
         sections.Add(TabsSection(settings, notch.AvailableTabs));
         sections.Add(this.TeleprompterSection(settings));
         // Nothing to ask for where the platform can't locate: the places are the whole story.
@@ -97,7 +107,6 @@ public sealed class SettingsPage : ContentPage
     TableSection NotchSection(AppSettings settings)
     {
         var section = Section("Notch", "The size of the closed notch, either side of the camera. Each side still grows to fit what it's showing: what's playing on the left; the weather, a countdown or a meeting on the right. At 0 and 0 with nothing to show, it's just the camera.");
-        section.HeaderView = Intro();
 
         var sliders = new List<Slider>();
         section.Cells.Add(Switch("Same width both sides", "arrow.left.and.right", Ui.Blue, settings.NotchWidthsLocked, locked =>
@@ -134,6 +143,7 @@ public sealed class SettingsPage : ContentPage
                 slider.Value = 0;
         }));
 
+        section.Cells.Add(Switch("Click the notch to open it", "cursorarrow.click", Ui.Blue, settings.ClickToOpen, v => settings.ClickToOpen = v));
         section.Cells.Add(Switch("Show the new song when it changes", "music.note", Ui.Red, settings.ShowTrackChanges, v => settings.ShowTrackChanges = v));
         section.Cells.Add(Switch("Show volume changes", "speaker.wave.2.fill", Ui.Pink, settings.ShowVolumeHud, v => settings.ShowVolumeHud = v));
         section.Cells.Add(Switch("Show brightness changes", "sun.max.fill", Ui.Yellow, settings.ShowBrightnessHud, v => settings.ShowBrightnessHud = v));
@@ -150,7 +160,7 @@ public sealed class SettingsPage : ContentPage
         foreach (var t in tabs)
         {
             var name = t.Tab.ToString();
-            var cell = new SwitchCell { Title = t.Name, On = !settings.HiddenTabs.Contains(name), IconSource = Ui.SymbolSource(t.Symbol, 16, Ui.Blue), IsSelectable = false };
+            var cell = NewSwitchCell(t.Name, Ui.SymbolSource(t.Symbol, 16, Ui.Blue), !settings.HiddenTabs.Contains(name));
             cell.PropertyChanged += (_, e) =>
             {
                 if (e.PropertyName != SwitchCell.OnProperty.PropertyName)
@@ -161,7 +171,8 @@ public sealed class SettingsPage : ContentPage
                 {
                     if (tabs.All(other => other.Tab == t.Tab || hidden.Contains(other.Tab.ToString())))
                     {
-                        cell.On = true;
+                        // After the click: set now, AppKit finishes the click after and leaves it drawn off.
+                        cell.Dispatcher.Dispatch(() => cell.On = true);
                         return;
                     }
                     hidden.Add(name);
@@ -337,6 +348,72 @@ public sealed class SettingsPage : ContentPage
     }
 
     /// <summary>
+    /// A newer release, whenever there is one - "Don't show again" only stops the window asking. The
+    /// install runs here too, its progress in the version row; a failure stays there to read.
+    /// </summary>
+    static TableSection? UpdateSection(UpdateService updates)
+    {
+        if (updates.Available is not { } release)
+            return null;
+
+        var section = Section("Update", null);
+        var version = new LabelCell
+        {
+            Title = $"Shiny Notch {release.DisplayVersion} is available",
+            Description = $"You have {updates.CurrentVersion}.",
+            IconSource = Ui.SymbolSource("arrow.down.circle.fill", 16, Ui.Blue),
+            IsSelectable = false
+        };
+        var install = Button("Install and Restart", () => { });
+        install.Command = new Command(async () =>
+        {
+            install.IsEnabled = false;
+            version.Description = "Downloading…";
+            try
+            {
+                await updates.InstallAsync(new Progress<double>(p =>
+                    version.Description = p >= 1 ? "Installing…" : $"Downloading… {p:P0}"));
+            }
+            catch (Exception ex)
+            {
+                version.Description = $"Couldn't install the update: {ex.Message}";
+                install.IsEnabled = true;
+            }
+        });
+        install.IsEnabled = !updates.IsInstalling;
+
+        section.Cells.Add(version);
+        section.Cells.Add(new CommandCell
+        {
+            Title = "Release Notes",
+            IconSource = Ui.SymbolSource("doc.text", 16, Ui.Secondary),
+            Command = new Command(() => updates.ShowRelease?.Invoke(release))
+        });
+        section.Cells.Add(install);
+        return section;
+    }
+
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        this.updates.Changed += this.OnUpdatesChanged;
+        // Found while the page was away.
+        this.OnUpdatesChanged(this, EventArgs.Empty);
+    }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        this.updates.Changed -= this.OnUpdatesChanged;
+    }
+
+    void OnUpdatesChanged(object? sender, EventArgs e)
+    {
+        if (this.updates.Available?.Version != this.shownUpdate)
+            this.Dispatcher.Dispatch(this.Rebuild);
+    }
+
+    /// <summary>
     /// The launch-at-login switch. It shows what macOS actually decided, not what was asked: the first
     /// registration usually needs approving in System Settings, and the user can turn the login item off
     /// there at any time. So the state is read fresh each time the page is built, never cached.
@@ -351,7 +428,7 @@ public sealed class SettingsPage : ContentPage
         }
 
         var syncing = false;
-        var login = new SwitchCell { Title = "Open Shiny Notch when you log in", IconSource = Ui.SymbolSource("power", 16, Ui.Green), IsSelectable = false };
+        var login = NewSwitchCell("Open Shiny Notch when you log in", Ui.SymbolSource("power", 16, Ui.Green), false);
         var openSettings = Button("Open Login Items", async () => await startup.OpenSettings());
 
         void Show(AppStartupState state)
@@ -424,15 +501,15 @@ public sealed class SettingsPage : ContentPage
     // Cells
     // ---------------------------------------------------------------------------------------------
 
-    static View Intro() => new VerticalStackLayout
+    static View Intro(string heading) => new VerticalStackLayout
     {
         Spacing = 4,
         Padding = new Thickness(4, 20, 4, 14),
         Children =
         {
             new Label { Text = "Shiny Notch", FontSize = 24, FontAttributes = FontAttributes.Bold, TextColor = Ui.Text },
-            new Label { Text = "Hover the notch to open it. Drop files on it to keep them in the tray.", FontSize = 12, TextColor = Ui.Secondary },
-            new Label { Text = "NOTCH", FontSize = 12, FontAttributes = FontAttributes.Bold, TextColor = Ui.Secondary, Margin = new Thickness(0, 18, 0, 0) }
+            new Label { Text = "Hover the notch to open it, or click it if you'd rather. Drop files on it to keep them in the tray.", FontSize = 12, TextColor = Ui.Secondary },
+            new Label { Text = heading, FontSize = 12, FontAttributes = FontAttributes.Bold, TextColor = Ui.Secondary, Margin = new Thickness(0, 18, 0, 0) }
         }
     };
 
@@ -444,9 +521,21 @@ public sealed class SettingsPage : ContentPage
         return section;
     }
 
+    /// <summary>
+    /// A switch row that only the switch toggles. Every cell carries a tap recognizer, and on the AppKit head
+    /// that is a click recognizer that takes the mouse-down from the switch inside it - and with the row
+    /// not selectable, does nothing with it, so clicking the switch did nothing at all.
+    /// </summary>
+    static SwitchCell NewSwitchCell(string title, ImageSource icon, bool on)
+    {
+        var cell = new SwitchCell { Title = title, On = on, IconSource = icon, IsSelectable = false };
+        cell.GestureRecognizers.Clear();
+        return cell;
+    }
+
     static SwitchCell Switch(string title, string symbol, Color tint, bool value, Action<bool> changed)
     {
-        var cell = new SwitchCell { Title = title, On = value, IconSource = Ui.SymbolSource(symbol, 16, tint), IsSelectable = false };
+        var cell = NewSwitchCell(title, Ui.SymbolSource(symbol, 16, tint), value);
         cell.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == SwitchCell.OnProperty.PropertyName)
