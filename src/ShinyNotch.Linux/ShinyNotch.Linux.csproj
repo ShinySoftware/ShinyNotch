@@ -4,7 +4,6 @@
     <PropertyGroup>
         <ShinyDIExtensionMethodName>AddPlatformServices</ShinyDIExtensionMethodName>
         <ShinyDIExtensionNamespace>ShinyNotch.Linux</ShinyDIExtensionNamespace>
-        <UsesShinyAudioLinux>true</UsesShinyAudioLinux>
         <TargetFramework>net10.0</TargetFramework>
         <OutputType>Exe</OutputType>
         <IsPackable>false</IsPackable>
@@ -28,22 +27,23 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.100" />
-        <PackageReference Include="Microsoft.Maui.Platforms.Linux.Gtk4" Version="0.1.0-preview.13.26514.2" />
-        <PackageReference Include="Microsoft.Maui.Platforms.Linux.Gtk4.Essentials" Version="0.1.0-preview.13.26514.2" />
+        <PackageReference Include="Microsoft.Maui.Controls" />
+        <PackageReference Include="Microsoft.Maui.Platforms.Linux.Gtk4" />
+        <PackageReference Include="Microsoft.Maui.Platforms.Linux.Gtk4.Essentials" />
         <!-- MPRIS, logind and GeoClue are all D-Bus. -->
-        <PackageReference Include="Tmds.DBus.Protocol" Version="0.94.1" />
+        <PackageReference Include="Tmds.DBus.Protocol" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(Configuration)' == 'Debug'">
-        <PackageReference Include="Microsoft.Maui.DevFlow.Agent.Gtk" Version="0.1.0-preview.13.26514.2" />
+        <PackageReference Include="Microsoft.Maui.DevFlow.Agent.Gtk" />
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Shiny.Calendar" Version="6.3.1-beta-0001" />
-        <PackageReference Include="Shiny.Core" Version="6.3.1-beta-0001" />
-        <PackageReference Include="Shiny.Extensions.Stores" Version="6.0.1" />
-        <PackageReference Include="Shiny.Maui.Controls" Version="2.0.0-beta-0010" />
-        <PackageReference Include="Shiny.Maui.Controls.Desktop" Version="2.0.0-beta-0010" />
+        <PackageReference Include="Shiny.Audio.Linux" />
+        <PackageReference Include="Shiny.Calendar" />
+        <PackageReference Include="Shiny.Core" />
+        <PackageReference Include="Shiny.Extensions.Stores" />
+        <PackageReference Include="Shiny.Maui.Controls" />
+        <PackageReference Include="Shiny.Maui.Controls.Desktop" />
     </ItemGroup>
 </Project>

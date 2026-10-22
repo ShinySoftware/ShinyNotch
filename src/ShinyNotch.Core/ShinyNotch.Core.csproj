@@ -5,7 +5,6 @@
     <PropertyGroup>
         <ShinyDIExtensionMethodName>AddShinyNotchServices</ShinyDIExtensionMethodName>
         <ShinyDIExtensionNamespace>ShinyNotch</ShinyDIExtensionNamespace>
-        <UsesShinyAudio>true</UsesShinyAudio>
         <TargetFramework>net10.0</TargetFramework>
         <UseMaui>true</UseMaui>
         <SingleProject>true</SingleProject>
@@ -14,15 +13,16 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.100" />
-        <PackageReference Include="Shiny.Calendar" Version="6.3.1-beta-0001" />
-        <PackageReference Include="Shiny.Core" Version="6.3.1-beta-0001" />
-        <PackageReference Include="Shiny.Extensions.Stores" Version="6.0.1" />
-        <PackageReference Include="Shiny.Maui.Controls" Version="2.0.0-beta-0010" />
-        <PackageReference Include="Shiny.Maui.Controls.Camera" Version="2.0.0-beta-0010" />
-        <PackageReference Include="Shiny.Maui.Controls.Camera.Barcode" Version="2.0.0-beta-0010" />
-        <PackageReference Include="Shiny.Maui.Controls.Desktop" Version="2.0.0-beta-0010" />
-        <PackageReference Include="Shiny.Maui.Controls.Markdown" Version="2.0.0-beta-0010" />
+        <PackageReference Include="Microsoft.Maui.Controls" />
+        <PackageReference Include="Shiny.Audio" />
+        <PackageReference Include="Shiny.Calendar" />
+        <PackageReference Include="Shiny.Core" />
+        <PackageReference Include="Shiny.Extensions.Stores" />
+        <PackageReference Include="Shiny.Maui.Controls" />
+        <PackageReference Include="Shiny.Maui.Controls.Camera" />
+        <PackageReference Include="Shiny.Maui.Controls.Camera.Barcode" />
+        <PackageReference Include="Shiny.Maui.Controls.Desktop" />
+        <PackageReference Include="Shiny.Maui.Controls.Markdown" />
     </ItemGroup>
 
     <ItemGroup>

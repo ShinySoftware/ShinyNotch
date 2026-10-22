@@ -2,7 +2,6 @@
     <PropertyGroup>
         <ShinyDIExtensionMethodName>AddPlatformServices</ShinyDIExtensionMethodName>
         <ShinyDIExtensionNamespace>ShinyNotch.MacOS</ShinyDIExtensionNamespace>
-        <UsesShinyAudio>true</UsesShinyAudio>
         <TargetFramework>net10.0-macos</TargetFramework>
         <OutputType>Exe</OutputType>
         <UseMaui>true</UseMaui>
@@ -34,9 +33,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.100" />
-        <PackageReference Include="Microsoft.Maui.Platforms.MacOS" Version="0.1.0-preview.13.26514.2" />
-        <PackageReference Include="Microsoft.Maui.Platforms.MacOS.Essentials" Version="0.1.0-preview.13.26514.2" />
+        <PackageReference Include="Microsoft.Maui.Controls" />
+        <PackageReference Include="Microsoft.Maui.Platforms.MacOS" />
+        <PackageReference Include="Microsoft.Maui.Platforms.MacOS.Essentials" />
     </ItemGroup>
 
     <ItemGroup>
@@ -47,7 +46,7 @@
     </ItemGroup>
 
     <ItemGroup Condition="'$(Configuration)' == 'Debug'">
-        <PackageReference Include="Microsoft.Maui.DevFlow.Agent" Version="0.1.0-preview.13.26514.2" />
+        <PackageReference Include="Microsoft.Maui.DevFlow.Agent" />
     </ItemGroup>
 
     <ItemGroup>
@@ -57,12 +56,13 @@
     <!-- Referenced here too, not only through Core: Core is net10.0, so these resolve their macOS
          assets only when this head asks for them. -->
     <ItemGroup>
-        <PackageReference Include="Shiny.Calendar" Version="6.3.1-beta-0001" />
-        <PackageReference Include="Shiny.Core" Version="6.3.1-beta-0001" />
-        <PackageReference Include="Shiny.Extensions.Stores" Version="6.0.1" />
-        <PackageReference Include="Shiny.Maui.Controls" Version="2.0.0-beta-0010" />
-        <PackageReference Include="Shiny.Maui.Controls.Camera" Version="2.0.0-beta-0010" />
-        <PackageReference Include="Shiny.Maui.Controls.Camera.Barcode" Version="2.0.0-beta-0010" />
-        <PackageReference Include="Shiny.Maui.Controls.Desktop" Version="2.0.0-beta-0010" />
+        <PackageReference Include="Shiny.Audio" />
+        <PackageReference Include="Shiny.Calendar" />
+        <PackageReference Include="Shiny.Core" />
+        <PackageReference Include="Shiny.Extensions.Stores" />
+        <PackageReference Include="Shiny.Maui.Controls" />
+        <PackageReference Include="Shiny.Maui.Controls.Camera" />
+        <PackageReference Include="Shiny.Maui.Controls.Camera.Barcode" />
+        <PackageReference Include="Shiny.Maui.Controls.Desktop" />
     </ItemGroup>
 </Project>

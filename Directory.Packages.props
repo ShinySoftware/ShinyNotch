@@ -1,0 +1,31 @@
+<Project>
+    <!-- Central Package Management: every package's version, once. Projects reference packages without a version. -->
+    <PropertyGroup>
+        <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageVersion Include="Microsoft.Maui.Controls" Version="10.0.100" />
+        <PackageVersion Include="Microsoft.Maui.DevFlow.Agent" Version="0.1.0-preview.13.26514.2" />
+        <PackageVersion Include="Microsoft.Maui.DevFlow.Agent.Gtk" Version="0.1.0-preview.13.26514.2" />
+        <PackageVersion Include="Microsoft.Maui.Platforms.Linux.Gtk4" Version="0.1.0-preview.13.26514.2" />
+        <PackageVersion Include="Microsoft.Maui.Platforms.Linux.Gtk4.Essentials" Version="0.1.0-preview.13.26514.2" />
+        <PackageVersion Include="Microsoft.Maui.Platforms.MacOS" Version="0.1.0-preview.13.26514.2" />
+        <PackageVersion Include="Microsoft.Maui.Platforms.MacOS.Essentials" Version="0.1.0-preview.13.26514.2" />
+        <PackageVersion Include="Microsoft.Win32.SystemEvents" Version="10.0.7" />
+        <PackageVersion Include="Shiny.Audio" Version="3.0.0-beta-0033" />
+        <PackageVersion Include="Shiny.Audio.Linux" Version="3.0.0-beta-0033" />
+        <PackageVersion Include="Shiny.Calendar" Version="6.3.1-beta-0001" />
+        <PackageVersion Include="Shiny.Core" Version="6.3.1-beta-0001" />
+        <PackageVersion Include="Shiny.Extensions.DependencyInjection" Version="6.0.1" />
+        <PackageVersion Include="Shiny.Extensions.Stores" Version="6.0.1" />
+        <PackageVersion Include="Shiny.Maui.Controls" Version="2.0.0-beta-0022" />
+        <PackageVersion Include="Shiny.Maui.Controls.Camera" Version="2.0.0-beta-0022" />
+        <PackageVersion Include="Shiny.Maui.Controls.Camera.Barcode" Version="2.0.0-beta-0022" />
+        <PackageVersion Include="Shiny.Maui.Controls.Desktop" Version="2.0.0-beta-0022" />
+        <PackageVersion Include="Shiny.Maui.Controls.Markdown" Version="2.0.0-beta-0022" />
+        <PackageVersion Include="System.Diagnostics.PerformanceCounter" Version="10.0.7" />
+        <PackageVersion Include="System.Management" Version="10.0.7" />
+        <PackageVersion Include="Tmds.DBus.Protocol" Version="0.94.1" />
+    </ItemGroup>
+</Project>

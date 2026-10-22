@@ -9,6 +9,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Shiny.Extensions.DependencyInjection" Version="6.0.1" />
+        <PackageReference Include="Shiny.Extensions.DependencyInjection" />
     </ItemGroup>
 </Project>
