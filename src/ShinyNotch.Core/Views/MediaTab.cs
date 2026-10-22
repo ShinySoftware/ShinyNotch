@@ -1,5 +1,6 @@
 using ShinyNotch.Platform;
 using ShinyNotch.Services;
+using Slider = Shiny.Maui.Controls.Slider;
 
 namespace ShinyNotch.Views;
 
@@ -15,9 +16,11 @@ sealed class MediaTab : VerticalStackLayout, ILiveView
     readonly INowPlayingService media;
     readonly Label? elapsed;
     readonly Label? remaining;
-    readonly CapsuleDrawable? progress;
-    readonly GraphicsView? progressView;
+    readonly Slider? progress;
     readonly Border? play;
+    bool syncing;
+    /// <summary>A drag is under way: the clock leaves the thumb alone and the labels follow the finger.</summary>
+    bool scrubbing;
 
     public MediaTab(INowPlayingService media)
     {
@@ -31,15 +34,31 @@ sealed class MediaTab : VerticalStackLayout, ILiveView
             this.elapsed = Ui.Label("", 10, bold: true, color: Ui.Tertiary, width: 34);
             this.remaining = Ui.Label("", 10, bold: true, color: Ui.Tertiary, width: 40);
             this.remaining.HorizontalTextAlignment = TextAlignment.End;
-            this.progress = new CapsuleDrawable { Fill = tint, Track = Colors.White.WithAlpha(0.14f) };
-            this.progressView = Drawing.View(this.progress, 260, 4);
-            this.progressView.HorizontalOptions = LayoutOptions.Fill;
+            // A fraction of the track, so the range needn't follow the duration.
+            this.progress = Ui.Slider(0, 1, 0, 0.001, tint, tint);
+            this.progress.TrackHeight = 4;
+            this.progress.ThumbSize = 10;
+            this.progress.HorizontalOptions = LayoutOptions.Fill;
+            this.progress.IsEnabled = now.Duration > 0;
+            this.progress.ValueChangedEvent += (_, _) =>
+            {
+                if (this.syncing)
+                    return;
+                this.scrubbing = true;
+                this.Tick();
+            };
+            this.progress.DragCompleted += (_, _) =>
+            {
+                this.scrubbing = false;
+                if (this.media.Current is { Duration: > 0 } playing)
+                    this.media.Seek(this.progress.Value * playing.Duration);
+            };
 
             var scrubber = new Grid
             {
                 ColumnSpacing = 8,
                 ColumnDefinitions = [new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto)],
-                Children = { this.elapsed.At(column: 0), this.progressView.At(column: 1), this.remaining.At(column: 2) }
+                Children = { this.elapsed.At(column: 0), this.progress.At(column: 1), this.remaining.At(column: 2) }
             };
 
             this.play = Ui.SymbolButton(now.IsPlaying ? "pause.fill" : "play.fill", media.PlayPause, PlaySize, hint: "Play or pause", padding: new Thickness(10, 2));
@@ -120,15 +139,16 @@ sealed class MediaTab : VerticalStackLayout, ILiveView
         if (this.media.Current is not { } now)
             return;
 
-        var position = this.media.Position;
+        var position = this.scrubbing && this.progress != null ? this.progress.Value * now.Duration : this.media.Position;
         if (this.elapsed != null)
             this.elapsed.Text = Time(position);
         if (this.remaining != null)
             this.remaining.Text = now.Duration > 0 ? $"-{Time(now.Duration - position)}" : "LIVE";
-        if (this.progress != null && this.progressView != null)
+        if (this.progress != null && !this.scrubbing)
         {
-            this.progress.Value = now.Duration > 0 ? position / now.Duration : 0;
-            this.progressView.Invalidate();
+            this.syncing = true;
+            this.progress.Value = now.Duration > 0 ? Math.Clamp(position / now.Duration, 0, 1) : 0;
+            this.syncing = false;
         }
         this.play?.SetSymbol(now.IsPlaying ? "pause.fill" : "play.fill", PlaySize);
     }

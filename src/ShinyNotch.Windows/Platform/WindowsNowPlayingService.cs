@@ -79,6 +79,8 @@ sealed class WindowsNowPlayingService : INowPlayingService, IDisposable
     public void PlayPause() => this.Command(s => s.TryTogglePlayPauseAsync().AsTask());
     public void Next() => this.Command(s => s.TrySkipNextAsync().AsTask());
     public void Previous() => this.Command(s => s.TrySkipPreviousAsync().AsTask());
+    // The timeline is measured from its start time, as ReadAsync reads it.
+    public void Seek(double seconds) => this.Command(s => s.TryChangePlaybackPositionAsync((s.GetTimelineProperties().StartTime + TimeSpan.FromSeconds(Math.Max(0, seconds))).Ticks).AsTask());
 
     async void Command(Func<GlobalSystemMediaTransportControlsSession, Task<bool>> command)
     {

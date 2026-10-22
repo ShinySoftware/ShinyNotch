@@ -42,4 +42,7 @@ public interface INowPlayingService
     void PlayPause();
     void Next();
     void Previous();
+
+    /// <summary>Moves the current track to <paramref name="seconds"/> in.</summary>
+    void Seek(double seconds);
 }

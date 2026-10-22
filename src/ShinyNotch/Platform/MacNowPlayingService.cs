@@ -108,6 +108,7 @@ sealed class MacNowPlayingService : INowPlayingService, IDisposable
     public void PlayPause() => this.Command("playpause");
     public void Next() => this.Command("next track");
     public void Previous() => this.Command("previous track");
+    public void Seek(double seconds) => this.Command($"set player position to {Math.Max(0, seconds).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)}");
 
     void Command(string verb)
     {

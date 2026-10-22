@@ -77,7 +77,14 @@ sealed class LinuxNowPlayingService : INowPlayingService, IDisposable
     public void Next() => this.Command("Next");
     public void Previous() => this.Command("Previous");
 
-    void Command(string method)
+    // Seek takes an offset in microseconds; SetPosition would need the track id, which not every player sets.
+    public void Seek(double seconds)
+    {
+        var offset = (long)((Math.Max(0, seconds) - this.Position) * 1_000_000);
+        this.Command("Seek", "x", w => w.WriteInt64(offset));
+    }
+
+    void Command(string method, string? signature = null, Action<MessageWriter>? write = null)
     {
         if (this.currentBusName is not { } name)
             return;
@@ -89,7 +96,7 @@ sealed class LinuxNowPlayingService : INowPlayingService, IDisposable
             try
             {
                 var connection = DBusConnection.Session;
-                await connection.CallMethodAsync(DBus.Call(connection, name, ObjectPath, PlayerInterface, method)).ConfigureAwait(false);
+                await connection.CallMethodAsync(DBus.Call(connection, name, ObjectPath, PlayerInterface, method, signature, write)).ConfigureAwait(false);
             }
             catch
             {
