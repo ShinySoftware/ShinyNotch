@@ -1,5 +1,6 @@
 using Shiny;
 using Shiny.Calendar;
+using Shiny.Maui.Controls;
 using Shiny.Maui.Controls.Camera;
 using ShinyNotch.Platform;
 using ShinyNotch.Services;
@@ -26,6 +27,11 @@ public static class ShinyNotchHosting
                 o.MaxWidth = 680;
                 o.MaxHeight = 640;
                 o.MorphDuration = 260;
+                // Without a hardware notch, hang from the top of the usable area (under the menu bar or a
+                // top taskbar) instead of floating an island below it, out of the way of what's on screen.
+                // A notched screen already gets this shape.
+                o.TopMargin = 0;
+                o.Configure = v => v.Shape = NotchShape.Notch;
             });
 
         // Launch at login, from Shiny.Core: a login item / startup entry for the running app.
