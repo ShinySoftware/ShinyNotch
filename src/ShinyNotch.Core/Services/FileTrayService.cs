@@ -60,6 +60,31 @@ public sealed class FileTrayService
 
     public IFileActions Actions { get; }
 
+    /// <summary>What the last <see cref="RemoveQuarantineAsync"/> came to, shown over the tray until dismissed.</summary>
+    public TrayNotice? Notice { get; private set; }
+
+    /// <summary>Trusts a dropped app (see <see cref="IFileActions.RemoveQuarantineAsync"/>) and says how it went.</summary>
+    public async Task RemoveQuarantineAsync(string path)
+    {
+        this.Notice = new TrayNotice($"Trusting {System.IO.Path.GetFileNameWithoutExtension(path)}…", Working: true);
+        this.Changed?.Invoke(this, EventArgs.Empty);
+        try
+        {
+            this.Notice = new TrayNotice(await this.Actions.RemoveQuarantineAsync(path));
+        }
+        catch (Exception ex)
+        {
+            this.Notice = new TrayNotice($"Couldn't trust {System.IO.Path.GetFileNameWithoutExtension(path)}: {ex.Message}", Failed: true);
+        }
+        this.Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void DismissNotice()
+    {
+        this.Notice = null;
+        this.Changed?.Invoke(this, EventArgs.Empty);
+    }
+
     static bool Exists(string path) => File.Exists(path) || Directory.Exists(path);
 
     void Save()
@@ -68,3 +93,5 @@ public sealed class FileTrayService
         this.Changed?.Invoke(this, EventArgs.Empty);
     }
 }
+
+public sealed record TrayNotice(string Message, bool Failed = false, bool Working = false);
