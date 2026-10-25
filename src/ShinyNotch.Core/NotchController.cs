@@ -76,6 +76,8 @@ public sealed class NotchController
     ILiveView? live;
     string? shownKey;
     bool dragging;
+    /// <summary>The drag carries an app the platform can trust, so the tray shows a target for that too.</summary>
+    bool draggingApp;
     bool pinnedByUser;
     /// <summary>The last song seen, so a new one can be told from a play/pause or a refresh.</summary>
     string? lastTrackKey;
@@ -177,13 +179,20 @@ public sealed class NotchController
             if (!IsNotchWindow(e.Window))
                 return;
             this.dragging = true;
+            this.draggingApp = e.Files.Any(f => f.FullPath is { } path && this.tray.Actions.CanRemoveQuarantine(path));
             this.Open(NotchTab.Tray);
+        };
+        this.fileDrop.DragOver += (_, e) =>
+        {
+            if (this.draggingApp && IsNotchWindow(e.Window))
+                this.LiveTray?.DragMoved(e.Position);
         };
         this.fileDrop.DragLeave += (_, e) =>
         {
             if (!IsNotchWindow(e.Window))
                 return;
             this.dragging = false;
+            this.EndAppDrag();
             this.ScheduleClose();
         };
         this.fileDrop.Dropped += (_, e) =>
@@ -191,7 +200,16 @@ public sealed class NotchController
             if (!IsNotchWindow(e.Window))
                 return;
             this.dragging = false;
-            this.tray.Add(e.Files.Select(f => f.FullPath).OfType<string>());
+            var paths = e.Files.Select(f => f.FullPath).OfType<string>().ToList();
+            // Dropped on the trust target: the apps are trusted, and kept in the tray to open from there.
+            var trust = this.draggingApp && this.LiveTray?.IsOverTrust(e.Position) == true;
+            this.draggingApp = false;
+            this.tray.Add(paths);
+            if (trust)
+            {
+                foreach (var app in paths.Where(this.tray.Actions.CanRemoveQuarantine))
+                    _ = this.tray.RemoveQuarantineAsync(app);
+            }
             this.Open(NotchTab.Tray);
             this.ScheduleClose();
         };
@@ -604,7 +622,18 @@ public sealed class NotchController
     TrayTab BuildTray()
     {
         this.tray.Prune();
-        return new TrayTab(this.tray);
+        return new TrayTab(this.tray, this.draggingApp);
+    }
+
+    TrayTab? LiveTray => (this.live as PanelView)?.Body as TrayTab;
+
+    /// <summary>An app drag that left without dropping: back to the plain tray.</summary>
+    void EndAppDrag()
+    {
+        if (!this.draggingApp)
+            return;
+        this.draggingApp = false;
+        this.Rebuild(NotchTab.Tray);
     }
 
     /// <summary>

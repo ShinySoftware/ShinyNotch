@@ -22,4 +22,17 @@ public interface IFileActions
     string ShareSymbol { get; }
 
     void Share(IReadOnlyList<string> paths);
+
+    /// <summary>
+    /// An app the system holds back as downloaded (Gatekeeper's "can't be opened" or "is damaged") that
+    /// <see cref="RemoveQuarantineAsync"/> can clear. False everywhere but macOS.
+    /// </summary>
+    bool CanRemoveQuarantine(string path) => false;
+
+    /// <summary>
+    /// Trusts an app: clears its quarantine flags, and gives it an ad-hoc signature when its own doesn't
+    /// check out, so it opens without the system blocking it. Returns what was done; throws with the reason
+    /// when it couldn't be.
+    /// </summary>
+    Task<string> RemoveQuarantineAsync(string path) => throw new NotSupportedException();
 }
