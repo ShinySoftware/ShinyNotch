@@ -201,15 +201,13 @@ public sealed class NotchController
                 return;
             this.dragging = false;
             var paths = e.Files.Select(f => f.FullPath).OfType<string>().ToList();
-            // Dropped on the trust target: the apps are trusted, and kept in the tray to open from there.
+            // Dropped on the trust target: the apps are trusted, not kept. Anything else in the drag still goes in the tray.
             var trust = this.draggingApp && this.LiveTray?.IsOverTrust(e.Position) == true;
             this.draggingApp = false;
-            this.tray.Add(paths);
-            if (trust)
-            {
-                foreach (var app in paths.Where(this.tray.Actions.CanRemoveQuarantine))
-                    _ = this.tray.RemoveQuarantineAsync(app);
-            }
+            var apps = trust ? paths.Where(this.tray.Actions.CanRemoveQuarantine).ToList() : [];
+            this.tray.Add(paths.Except(apps));
+            foreach (var app in apps)
+                _ = this.tray.RemoveQuarantineAsync(app);
             this.Open(NotchTab.Tray);
             this.ScheduleClose();
         };
