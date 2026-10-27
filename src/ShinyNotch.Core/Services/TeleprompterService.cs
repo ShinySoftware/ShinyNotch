@@ -31,6 +31,8 @@ public sealed class TeleprompterService
     public string Script => this.settings.TeleprompterScript;
     public double FontSize => this.settings.TeleprompterFontSize;
     public double Speed => this.settings.TeleprompterSpeed;
+    public double Width => this.settings.TeleprompterWidth;
+    public double Height => this.settings.TeleprompterHeight;
 
     /// <summary>Raised ~30 times a second while running.</summary>
     public event EventHandler? Scrolled;

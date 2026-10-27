@@ -24,8 +24,9 @@ public static class ShinyNotchHosting
             .UseDesktopQuickEntry()
             .UseDesktopNotch(o =>
             {
-                o.MaxWidth = 680;
-                o.MaxHeight = 640;
+                // Room for the widest and tallest teleprompter Settings allows; every other tab is 640 wide.
+                o.MaxWidth = AppSettings.MaxTeleprompterWidth + 40;
+                o.MaxHeight = 760;
                 o.MorphDuration = 260;
                 // Without a hardware notch, hang from the top of the usable area (under the menu bar or a
                 // top taskbar) instead of floating an island below it, out of the way of what's on screen.

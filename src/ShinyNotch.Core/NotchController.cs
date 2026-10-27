@@ -263,7 +263,7 @@ public sealed class NotchController
         // Only the settings the Prompter tab draws with; the speed (say) changes nothing on screen.
         this.settings.Changed += (_, key) =>
         {
-            if (key is nameof(AppSettings.TeleprompterScript) or nameof(AppSettings.TeleprompterFontSize))
+            if (key is nameof(AppSettings.TeleprompterScript) or nameof(AppSettings.TeleprompterFontSize) or nameof(AppSettings.TeleprompterWidth) or nameof(AppSettings.TeleprompterHeight))
                 this.Rebuild(NotchTab.Prompter);
             // The tab strip changes. Turned off while showing it, the panel moves to Now Playing.
             else if (key is nameof(AppSettings.HiddenTabs) && this.mode == Mode.Panel)
@@ -614,7 +614,8 @@ public sealed class NotchController
 
         var cutout = this.notch.HardwareNotchSize;
         var controls = new ControlsBar(this.media, this.controls, showPlay: this.tab != NotchTab.Media);
-        return new PanelView(this.tab, this.ShownTabs, body, controls, cutout.Width, Math.Max(cutout.Height, 32), this.pinnedByUser, this.Open, this.TogglePin, () => this.OpenSettings?.Invoke());
+        var width = this.tab == NotchTab.Prompter ? this.prompter.Width : Ui.PanelWidth;
+        return new PanelView(this.tab, this.ShownTabs, body, controls, width, cutout.Width, Math.Max(cutout.Height, 32), this.pinnedByUser, this.Open, this.TogglePin, () => this.OpenSettings?.Invoke());
     }
 
     TrayTab BuildTray()
