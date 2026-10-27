@@ -34,13 +34,16 @@ static class Ui
     public static readonly Color Indigo = Color.FromArgb("#5E5CE6");
 
     /// <summary>
-    /// The expanded panel's width. Fixed, so switching tabs only ever changes the height. Wide enough for
-    /// six tabs a side of the camera at full size.
+    /// The expanded panel's width. Fixed, so switching tabs only ever changes the height - except to a
+    /// teleprompter set wider in Settings. Wide enough for six tabs a side of the camera at full size.
     /// </summary>
     public const double PanelWidth = 640;
 
+    /// <summary>The panel's padding, left and right together.</summary>
+    public const double PanelPadding = 28;
+
     /// <summary>The width inside the panel's padding.</summary>
-    public const double ContentWidth = PanelWidth - 28;
+    public const double ContentWidth = PanelWidth - PanelPadding;
 
     public const double CardRadius = 14;
 

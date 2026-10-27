@@ -99,7 +99,7 @@ A ring that drains as the countdown runs, presets from 1 to 45 minutes, plus +1 
 <img src="docs/screenshots/timer.png" width="668" alt="Timer tab" />
 
 ### Teleprompter
-Your script scrolls right under the camera, so you read while looking at the lens. There's play/pause, nudge, speed and text size, and the notch stays open while it runs. Edit the script in Settings.
+Your script scrolls right under the camera, so you read while looking at the lens. There's play/pause, nudge, speed and text size, and the notch stays open while it runs. Edit the script in Settings, and make the teleprompter wider or taller there too.
 
 <img src="docs/screenshots/teleprompter.png" width="668" alt="Teleprompter tab" />
 

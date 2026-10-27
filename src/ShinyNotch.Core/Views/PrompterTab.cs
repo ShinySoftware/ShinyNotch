@@ -7,16 +7,17 @@ namespace ShinyNotch.Views;
 /// </summary>
 sealed class PrompterTab : VerticalStackLayout
 {
-    const double ViewportHeight = 150;
     const double FadeHeight = 18;
 
     readonly TeleprompterService prompter;
     readonly ScrollView scroller;
     readonly Label script;
+    readonly double viewportHeight;
 
     public PrompterTab(TeleprompterService prompter, Action openSettings)
     {
         this.prompter = prompter;
+        this.viewportHeight = prompter.Height;
         this.Spacing = 10;
 
         this.script = new Label
@@ -27,11 +28,11 @@ sealed class PrompterTab : VerticalStackLayout
             TextColor = Ui.Text,
             LineBreakMode = LineBreakMode.WordWrap,
             LineHeight = 1.15,
-            WidthRequest = Ui.ContentWidth - 8
+            WidthRequest = prompter.Width - Ui.PanelPadding - 8
         };
         this.scroller = new ScrollView
         {
-            HeightRequest = ViewportHeight,
+            HeightRequest = this.viewportHeight,
             Orientation = ScrollOrientation.Vertical,
             VerticalScrollBarVisibility = ScrollBarVisibility.Never,
             Content = this.script
@@ -106,7 +107,7 @@ sealed class PrompterTab : VerticalStackLayout
     /// <summary>Follows the service's offset. Called on every teleprompter frame.</summary>
     public void Scroll()
     {
-        var max = Math.Max(0, this.scroller.ContentSize.Height - ViewportHeight);
+        var max = Math.Max(0, this.scroller.ContentSize.Height - this.viewportHeight);
         if (max > 0 && this.prompter.Offset >= max)
             this.prompter.ReachedEnd();
 

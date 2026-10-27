@@ -36,6 +36,28 @@ public sealed class AppSettings
         set => this.Set(nameof(this.TeleprompterFontSize), Math.Clamp(value, 12, 48));
     }
 
+    public const double MinTeleprompterWidth = 640;
+    public const double MaxTeleprompterWidth = 1000;
+    public const double MinTeleprompterHeight = 80;
+    public const double MaxTeleprompterHeight = 400;
+
+    /// <summary>
+    /// The panel's width while the Teleprompter tab shows, in points. At the minimum it is every other
+    /// tab's width; any wider and the panel grows sideways for the teleprompter only.
+    /// </summary>
+    public double TeleprompterWidth
+    {
+        get => this.Double(nameof(this.TeleprompterWidth), MinTeleprompterWidth);
+        set => this.Set(nameof(this.TeleprompterWidth), Math.Clamp(Math.Round(value), MinTeleprompterWidth, MaxTeleprompterWidth));
+    }
+
+    /// <summary>How much of the script shows at once: the height of the scrolling text, in points.</summary>
+    public double TeleprompterHeight
+    {
+        get => this.Double(nameof(this.TeleprompterHeight), 150);
+        set => this.Set(nameof(this.TeleprompterHeight), Math.Clamp(Math.Round(value), MinTeleprompterHeight, MaxTeleprompterHeight));
+    }
+
     public bool UseHardwareNotch
     {
         get => this.Bool(nameof(this.UseHardwareNotch), true);

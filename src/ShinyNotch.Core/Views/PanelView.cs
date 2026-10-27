@@ -49,11 +49,12 @@ sealed class PanelView : Grid, ILiveView, IDisposable
     public ControlsBar Controls { get; }
 
     /// <param name="tabs">The tabs to show: the ones this platform has and Settings hasn't turned off.</param>
-    public PanelView(NotchTab selected, IReadOnlyList<NotchTabInfo> tabs, View body, ControlsBar controls, double cutoutWidth, double bandHeight, bool pinned, Action<NotchTab> select, Action togglePin, Action openSettings)
+    /// <param name="width">The panel's width: <see cref="Ui.PanelWidth"/>, unless the tab asks for more.</param>
+    public PanelView(NotchTab selected, IReadOnlyList<NotchTabInfo> tabs, View body, ControlsBar controls, double width, double cutoutWidth, double bandHeight, bool pinned, Action<NotchTab> select, Action togglePin, Action openSettings)
     {
         this.Body = body;
         this.Controls = controls;
-        this.WidthRequest = Ui.PanelWidth;
+        this.WidthRequest = width;
         this.RowDefinitions = [new RowDefinition(bandHeight), new RowDefinition(GridLength.Auto), new RowDefinition(GridLength.Auto)];
         this.ColumnDefinitions =
         [
@@ -71,7 +72,7 @@ sealed class PanelView : Grid, ILiveView, IDisposable
         // Buttons share the room there is between the panel's edge and the camera: the more a side holds,
         // the less padding each gets. The symbols stay full size.
         var perSide = Math.Max(leftTabs.Count, rightTabs.Count + 2);
-        var room = (Ui.ContentWidth - Math.Max(cutoutWidth, 8)) / 2;
+        var room = (width - Ui.PanelPadding - Math.Max(cutoutWidth, 8)) / 2;
         var inset = Math.Clamp(Math.Floor((room / perSide - Ui.SymbolBox(TabSymbol)) / 2), 1, 6);
 
         // The selected tab sits on a pill; the pin only changes colour, since it's a switch, not a place.

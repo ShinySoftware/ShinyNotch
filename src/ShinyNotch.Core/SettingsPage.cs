@@ -225,6 +225,8 @@ public sealed class SettingsPage : ContentPage
         section.Cells.Add(new CustomCell { UseFullSize = true, IsSelectable = false, CustomContent = new ContentView { Padding = new Thickness(12, 10), Content = script } });
         section.Cells.Add(StepperCell("Text size", "textformat.size", Ui.Orange, settings.TeleprompterFontSize, 12, 48, 2, "pt", v => settings.TeleprompterFontSize = v));
         section.Cells.Add(StepperCell("Speed", "speedometer", Ui.Green, settings.TeleprompterSpeed, 5, 200, 4, "pt/s", v => settings.TeleprompterSpeed = v));
+        section.Cells.Add(StepperCell("Width", "arrow.left.and.right.square", Ui.Teal, settings.TeleprompterWidth, AppSettings.MinTeleprompterWidth, AppSettings.MaxTeleprompterWidth, 40, "pt", v => settings.TeleprompterWidth = v));
+        section.Cells.Add(StepperCell("Height", "arrow.up.and.down.square", Ui.Indigo, settings.TeleprompterHeight, AppSettings.MinTeleprompterHeight, AppSettings.MaxTeleprompterHeight, 20, "pt", v => settings.TeleprompterHeight = v));
         return section;
     }
 
