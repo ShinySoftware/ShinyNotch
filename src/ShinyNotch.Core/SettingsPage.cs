@@ -85,7 +85,7 @@ public sealed class SettingsPage : ContentPage
         if (calendar.IsSupported)
             sections.Add(this.PermissionsSection(calendar));
         sections.Add(GeneralSection(startup, shell));
-        sections.Add(AboutSection(shell));
+        sections.Add(AboutSection(shell, updates));
 
         // The table is the page's one scroller.
         this.Content = table;
@@ -474,10 +474,32 @@ public sealed class SettingsPage : ContentPage
         return section;
     }
 
-    static TableSection AboutSection(IPlatformShell shell)
+    /// <summary>
+    /// Check for Updates says how it went in the version row. A newer release rebuilds the page (see
+    /// <see cref="OnUpdatesChanged"/>) with the Update section at the top.
+    /// </summary>
+    static TableSection AboutSection(IPlatformShell shell, UpdateService updates)
     {
         var section = Section("About", "Shiny Notch is built on the open-source Shiny .NET libraries.");
-        section.Cells.Add(new LabelCell { Title = "Version", ValueText = AppInfo.VersionString, IconSource = Ui.SymbolSource("info.circle.fill", 16, Ui.Secondary), IsSelectable = false });
+        var version = new LabelCell { Title = "Version", ValueText = updates.CurrentVersion, Description = "", IconSource = Ui.SymbolSource("info.circle.fill", 16, Ui.Secondary), IsSelectable = false };
+        section.Cells.Add(version);
+        if (updates.IsSupported)
+        {
+            var check = Button("Check for Updates", () => { });
+            check.Command = new Command(async () =>
+            {
+                check.IsEnabled = false;
+                version.Description = "Checking…";
+                var reached = await updates.CheckAsync();
+                version.Description = !reached
+                    ? "Couldn't reach GitHub. Try again in a bit."
+                    : updates.Available is { } release
+                        ? $"Shiny Notch {release.DisplayVersion} is available - see the top of this page."
+                        : "You're up to date.";
+                check.IsEnabled = true;
+            });
+            section.Cells.Add(check);
+        }
         section.Cells.Add(new CommandCell
         {
             Title = "ShinySoft Technologies",

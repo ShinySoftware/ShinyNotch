@@ -6,8 +6,8 @@ using ShinyNotch.Platform;
 namespace ShinyNotch.Services;
 
 /// <summary>
-/// New releases, from the repo's GitHub releases (public, no token needed). Checked at launch and once a
-/// day after: the app starts at login and can run for weeks.
+/// New releases, from the repo's GitHub releases (public, no token needed). Checked at launch and once an
+/// hour after (the app starts at login and can run for weeks), or on demand from Settings.
 /// </summary>
 /// <remarks>
 /// Prereleases count. A release is only offered when it carries this head's download (see
@@ -18,7 +18,7 @@ namespace ShinyNotch.Services;
 public sealed class UpdateService
 {
     const string ReleasesUrl = "https://api.github.com/repos/ShinySoftware/ShinyNotch/releases?per_page=20";
-    static readonly TimeSpan CheckEvery = TimeSpan.FromDays(1);
+    static readonly TimeSpan CheckEvery = TimeSpan.FromHours(1);
 
     readonly AppSettings settings;
     readonly IAppUpdater? updater;
@@ -26,8 +26,9 @@ public sealed class UpdateService
     readonly TimeProvider time;
     readonly HttpClient http = new() { Timeout = TimeSpan.FromSeconds(20) };
     ITimer? timer;
-    bool checking;
-    /// <summary>The release last announced through <see cref="Found"/>, so a daily check doesn't ask twice.</summary>
+    /// <summary>The check in flight, so a click on Check for Updates during the hourly one waits on it.</summary>
+    Task<bool>? checking;
+    /// <summary>The release last announced through <see cref="Found"/>, so an hourly check doesn't ask twice.</summary>
     string? announced;
 
     public UpdateService(AppSettings settings, IEnumerable<IAppUpdater> updaters, IDispatcher dispatcher, TimeProvider time)
@@ -66,7 +67,7 @@ public sealed class UpdateService
     /// <summary>A newer release turned up that the user hasn't said not to show again. Raised once per release.</summary>
     public event EventHandler<AppRelease>? Found;
 
-    /// <summary>Checks now, then once a day. Does nothing where there's no updater.</summary>
+    /// <summary>Checks now, then once an hour. Does nothing where there's no updater.</summary>
     public void Start()
     {
         if (this.updater == null || this.timer != null)
@@ -77,15 +78,23 @@ public sealed class UpdateService
     /// <summary>"Don't show again": no more asking about this release. A newer one asks again.</summary>
     public void Skip(AppRelease release) => this.settings.SkippedUpdate = release.Version;
 
-    public async Task CheckAsync()
+    /// <summary>Asks GitHub for a newer release, updating <see cref="Available"/>.</summary>
+    /// <returns>False when GitHub couldn't be reached (offline, rate limited), or there's nothing to check with.</returns>
+    public Task<bool> CheckAsync()
     {
-        if (this.updater == null || this.checking || this.IsInstalling)
-            return;
+        if (this.updater == null || this.IsInstalling)
+            return Task.FromResult(false);
 
-        this.checking = true;
+        if (this.checking is { IsCompleted: false } running)
+            return running;
+        return this.checking = this.CheckCoreAsync(this.updater);
+    }
+
+    async Task<bool> CheckCoreAsync(IAppUpdater updater)
+    {
         try
         {
-            var newest = await this.FetchNewestAsync(this.updater).ConfigureAwait(true);
+            var newest = await this.FetchNewestAsync(updater).ConfigureAwait(true);
             var available = newest != null && ReleaseVersion.Compare(newest.Version, this.CurrentVersion) > 0 ? newest : null;
             if (available?.Version != this.Available?.Version)
             {
@@ -98,14 +107,12 @@ public sealed class UpdateService
                 this.announced = available.Version;
                 this.Found?.Invoke(this, available);
             }
+            return true;
         }
         catch
         {
-            // Offline, rate limited or GitHub having a moment: tomorrow's check will do.
-        }
-        finally
-        {
-            this.checking = false;
+            // Offline, rate limited or GitHub having a moment: the next hour's check will do.
+            return false;
         }
     }
 
