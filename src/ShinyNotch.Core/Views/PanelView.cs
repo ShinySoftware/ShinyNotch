@@ -10,6 +10,7 @@ public enum NotchTab
     Mirror,
     Notes,
     Tasks,
+    Clipboard,
     Calendar,
     Timer,
     Prompter
@@ -29,6 +30,7 @@ public sealed record NotchTabInfo(NotchTab Tab, string Symbol, string Name)
         new(NotchTab.Mirror, "person.crop.square.fill", "Mirror"),
         new(NotchTab.Notes, "waveform", "Voice Notes"),
         new(NotchTab.Tasks, "checklist", "Tasks"),
+        new(NotchTab.Clipboard, "doc.on.clipboard", "Clipboard"),
         new(NotchTab.Calendar, "calendar", "Calendar"),
         new(NotchTab.Timer, "timer", "Timer"),
         new(NotchTab.Prompter, "text.alignleft", "Teleprompter")

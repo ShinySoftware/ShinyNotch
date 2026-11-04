@@ -63,6 +63,7 @@ public sealed class NotchController
     readonly VoiceNotesService notes;
     readonly TasksService tasks;
     readonly TaskEntry taskEntry;
+    readonly ClipboardService clipboard;
     readonly bool hasMirror;
     readonly ICameraControls? cameraControls;
     readonly ICaptureTab? capture;
@@ -109,6 +110,7 @@ public sealed class NotchController
         VoiceNotesService notes,
         TasksService tasks,
         TaskEntry taskEntry,
+        ClipboardService clipboard,
         IEnumerable<MirrorSupport> mirror,
         IEnumerable<ICameraControls> cameraControls,
         IEnumerable<ICaptureTab> captures,
@@ -130,6 +132,7 @@ public sealed class NotchController
         this.notes = notes;
         this.tasks = tasks;
         this.taskEntry = taskEntry;
+        this.clipboard = clipboard;
         this.hasMirror = mirror.Any();
         this.cameraControls = cameraControls.FirstOrDefault();
         this.capture = captures.FirstOrDefault();
@@ -247,6 +250,7 @@ public sealed class NotchController
         this.controls.ChangedExternally += (_, kind) => this.ShowHud(kind);
         this.weather.Changed += (_, _) => this.Rebuild(NotchTab.Weather);
         this.tasks.Changed += (_, _) => this.Rebuild(NotchTab.Tasks);
+        this.clipboard.Changed += (_, _) => this.Rebuild(NotchTab.Clipboard);
         // Typing a task holds the panel open behind the popup; done typing, it closes as usual.
         this.taskEntry.Closed += (_, _) => this.ScheduleClose();
         this.notes.Changed += (_, _) =>
@@ -279,6 +283,7 @@ public sealed class NotchController
 
         this.media.Start();
         this.controls.Start();
+        this.clipboard.Start();
         _ = this.calendar.RefreshAsync();
         _ = this.weather.RefreshAsync();
         var now = this.time.GetUtcNow();
@@ -609,6 +614,7 @@ public sealed class NotchController
             NotchTab.Mirror => new MirrorTab(this.settings, this.tray, this.cameraControls),
             NotchTab.Notes => new NotesTab(this.notes, this.tray),
             NotchTab.Tasks => new TasksTab(this.tasks, this.taskEntry.Show),
+            NotchTab.Clipboard => new ClipboardTab(this.clipboard, this.time),
             _ => new PrompterTab(this.prompter, () => this.OpenSettings?.Invoke())
         };
 

@@ -88,6 +88,11 @@ A to-do list. Check a task off and it's struck through, then cleared away a day 
 
 <img src="docs/screenshots/tasks.png" width="668" alt="Tasks tab" />
 
+### Clipboard
+What you've copied lately, newest first. Click an entry to put it back on the clipboard, ready to paste. Pin the ones you reuse to keep them at the top and out of reach of Clear; up to 50 others are kept. Copies a password manager marks as concealed are never recorded, and turning the tab off in Settings stops recording altogether.
+
+<img src="docs/screenshots/clipboard.png" width="668" alt="Clipboard tab" />
+
 ### Calendar
 The rest of today and tomorrow, from every calendar you have.
 
@@ -131,7 +136,7 @@ dotnet build -c Release
 open src/ShinyNotch/bin/Release/net10.0-macos/osx-arm64/ShinyNotch.app
 ```
 
-Debug builds accept `--open <Media|Weather|Tray|Stats|Capture|Mirror|Notes|Tasks|Calendar|Timer|Prompter>` to start with the panel pinned open on a tab, which makes the UI drivable without a mouse:
+Debug builds accept `--open <Media|Weather|Tray|Stats|Capture|Mirror|Notes|Tasks|Clipboard|Calendar|Timer|Prompter>` to start with the panel pinned open on a tab, which makes the UI drivable without a mouse:
 
 ```bash
 src/ShinyNotch/bin/Debug/net10.0-macos/osx-arm64/ShinyNotch.app/Contents/MacOS/ShinyNotch --open Weather
