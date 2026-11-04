@@ -92,6 +92,9 @@ static class SymbolGlyphs
         ["checklist"] = "\uE9D5",
         ["circle"] = "\uEA3A",
 
+        // Clipboard
+        ["doc.on.clipboard"] = "\uE77F",
+
         // Voice notes and the mirror
         ["qrcode"] = "\uED14",
         ["arrow.up.right"] = "\uE8A7",

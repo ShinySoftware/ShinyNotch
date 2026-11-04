@@ -35,6 +35,7 @@ static class SymbolNames
         ["chevron.right"] = ["pan-end-symbolic", "go-next-symbolic"],
         ["cpu"] = ["utilities-system-monitor-symbolic", "computer-symbolic"],
         ["cursorarrow.click"] = ["input-mouse-symbolic"],
+        ["doc.on.clipboard"] = ["edit-paste-symbolic", "edit-copy-symbolic"],
         ["doc.on.doc"] = ["edit-copy-symbolic"],
         ["doc.on.doc.fill"] = ["edit-copy-symbolic"],
         ["folder.fill"] = ["folder-symbolic"],

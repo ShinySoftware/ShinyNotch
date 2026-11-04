@@ -148,6 +148,13 @@ public sealed class AppSettings
         set => this.Set(nameof(this.Tasks), value ?? "", notify: false);
     }
 
+    /// <summary>The clipboard history, as JSON (see <see cref="ClipboardService"/>).</summary>
+    public string? ClipboardHistory
+    {
+        get => this.Text(nameof(this.ClipboardHistory));
+        set => this.Set(nameof(this.ClipboardHistory), value ?? "", notify: false);
+    }
+
     /// <summary>The microphone voice notes record from, by its device id; null is the system default.</summary>
     public string? VoiceNoteInput
     {
