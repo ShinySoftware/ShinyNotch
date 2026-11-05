@@ -23,6 +23,7 @@
         <PackageReference Include="Shiny.Maui.Controls.Camera.Barcode" />
         <PackageReference Include="Shiny.Maui.Controls.Desktop" />
         <PackageReference Include="Shiny.Maui.Controls.Markdown" />
+        <PackageReference Include="Shiny.Speech" />
     </ItemGroup>
 
     <ItemGroup>

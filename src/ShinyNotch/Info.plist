@@ -20,7 +20,9 @@
     <key>NSCameraUsageDescription</key>
     <string>Shiny Notch shows your camera as a mirror in the notch, and takes a photo when you ask.</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>Shiny Notch records voice notes from your microphone.</string>
+    <string>Shiny Notch records voice notes from your microphone, and listens as you read the teleprompter when you ask it to follow your voice.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Shiny Notch follows along as you read the teleprompter, scrolling with your voice and marking the word you're on.</string>
     <key>NSCalendarsFullAccessUsageDescription</key>
     <string>Shiny Notch shows your upcoming events in the notch.</string>
     <key>NSCalendarsUsageDescription</key>

@@ -58,6 +58,16 @@ public sealed class AppSettings
         set => this.Set(nameof(this.TeleprompterHeight), Math.Clamp(Math.Round(value), MinTeleprompterHeight, MaxTeleprompterHeight));
     }
 
+    /// <summary>
+    /// Offer to follow the reader's voice with speech-to-text: a microphone button on the teleprompter that
+    /// scrolls with the words as they're said and marks the one being read. Off unless asked for.
+    /// </summary>
+    public bool TeleprompterFollowVoice
+    {
+        get => this.Bool(nameof(this.TeleprompterFollowVoice), false);
+        set => this.Set(nameof(this.TeleprompterFollowVoice), value);
+    }
+
     public bool UseHardwareNotch
     {
         get => this.Bool(nameof(this.UseHardwareNotch), true);

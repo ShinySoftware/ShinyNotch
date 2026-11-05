@@ -21,6 +21,7 @@ public static class MauiProgram
 
         // Before anything else from Shiny.Audio: PulseAudio/PipeWire capture and playback for voice notes.
         builder.Services.AddLinuxAudio();
+        // No speech-to-text: Linux has no OS recognizer, so the teleprompter doesn't offer to follow a voice.
 
         // Everything marked [Singleton] in this head: the Platform implementations, and a calendar store
         // that says there's no calendar (Shiny.Calendar has none for plain net10.0).

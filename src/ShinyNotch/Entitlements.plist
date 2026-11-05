@@ -9,7 +9,7 @@
     <!-- NSAppleScript to Music and Spotify. -->
     <key>com.apple.security.automation.apple-events</key>
     <true/>
-    <!-- The Mirror tab, and voice notes. -->
+    <!-- The Mirror tab, voice notes, and the teleprompter following your voice. -->
     <key>com.apple.security.device.camera</key>
     <true/>
     <key>com.apple.security.device.audio-input</key>

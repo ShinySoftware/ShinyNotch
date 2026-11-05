@@ -169,7 +169,7 @@ public sealed class NotchController
     }
 
     /// <summary>The notch should stay open even when the pointer leaves.</summary>
-    bool IsPinned => this.pinnedByUser || this.dragging || this.prompter.IsRunning || this.notes.IsRecording || this.taskEntry.IsOpen;
+    bool IsPinned => this.pinnedByUser || this.dragging || this.prompter.IsRunning || this.prompter.IsListening || this.notes.IsRecording || this.taskEntry.IsOpen;
 
     public async Task StartAsync()
     {
@@ -239,8 +239,13 @@ public sealed class NotchController
         this.prompter.StateChanged += (_, _) =>
         {
             this.Rebuild(NotchTab.Prompter);
-            if (!this.prompter.IsRunning)
+            if (!this.prompter.IsRunning && !this.prompter.IsListening)
                 this.ScheduleClose();
+        };
+        this.prompter.WordChanged += (_, _) =>
+        {
+            if (this.live is PanelView { Body: PrompterTab prompterTab })
+                prompterTab.ShowWord();
         };
         this.prompter.Scrolled += (_, _) =>
         {
@@ -267,7 +272,7 @@ public sealed class NotchController
         // Only the settings the Prompter tab draws with; the speed (say) changes nothing on screen.
         this.settings.Changed += (_, key) =>
         {
-            if (key is nameof(AppSettings.TeleprompterScript) or nameof(AppSettings.TeleprompterFontSize) or nameof(AppSettings.TeleprompterWidth) or nameof(AppSettings.TeleprompterHeight))
+            if (key is nameof(AppSettings.TeleprompterScript) or nameof(AppSettings.TeleprompterFontSize) or nameof(AppSettings.TeleprompterWidth) or nameof(AppSettings.TeleprompterHeight) or nameof(AppSettings.TeleprompterFollowVoice))
                 this.Rebuild(NotchTab.Prompter);
             // The tab strip changes. Turned off while showing it, the panel moves to Now Playing.
             else if (key is nameof(AppSettings.HiddenTabs) && this.mode == Mode.Panel)

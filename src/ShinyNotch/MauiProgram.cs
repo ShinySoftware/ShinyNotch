@@ -25,6 +25,8 @@ public static class MauiProgram
 
         builder.Services.AddCalendarStore();
         builder.Services.AddAudioServices();
+        // The teleprompter follows your voice, when that's turned on in Settings.
+        builder.Services.AddSpeechToText();
         // Everything marked [Singleton] in this head: the Platform implementations and macshot.
         builder.Services.AddPlatformServices();
 

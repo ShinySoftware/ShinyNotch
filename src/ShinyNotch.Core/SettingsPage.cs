@@ -39,7 +39,7 @@ public sealed class SettingsPage : ContentPage
     /// <summary>The release the Update section was built for, so only a different one rebuilds the page.</summary>
     readonly string? shownUpdate;
 
-    public SettingsPage(AppSettings settings, CalendarService calendar, WeatherService weather, NotchController notch, IPlatformShell shell, IAppStartupInstaller startup, UpdateService updates)
+    public SettingsPage(AppSettings settings, CalendarService calendar, WeatherService weather, NotchController notch, IPlatformShell shell, IAppStartupInstaller startup, UpdateService updates, TeleprompterService prompter)
     {
         this.updates = updates;
         this.shownUpdate = updates.Available?.Version;
@@ -76,7 +76,7 @@ public sealed class SettingsPage : ContentPage
         sections.Add(this.NotchSection(settings));
         sections[0].HeaderView = Intro(sections[0].Title);
         sections.Add(TabsSection(settings, notch.AvailableTabs));
-        sections.Add(this.TeleprompterSection(settings));
+        sections.Add(this.TeleprompterSection(settings, prompter));
         // Nothing to ask for where the platform can't locate: the places are the whole story.
         if (!weather.IsLocationUnavailable)
             sections.Add(this.WeatherSection(settings, weather));
@@ -184,7 +184,7 @@ public sealed class SettingsPage : ContentPage
         return section;
     }
 
-    TableSection TeleprompterSection(AppSettings settings)
+    TableSection TeleprompterSection(AppSettings settings, TeleprompterService prompter)
     {
         var section = Section("Teleprompter", "Your script scrolls right under the camera, so you read while looking at the lens.");
 
@@ -227,6 +227,9 @@ public sealed class SettingsPage : ContentPage
         section.Cells.Add(StepperCell("Speed", "speedometer", Ui.Green, settings.TeleprompterSpeed, 5, 200, 4, "pt/s", v => settings.TeleprompterSpeed = v));
         section.Cells.Add(StepperCell("Width", "arrow.left.and.right.square", Ui.Teal, settings.TeleprompterWidth, AppSettings.MinTeleprompterWidth, AppSettings.MaxTeleprompterWidth, 40, "pt", v => settings.TeleprompterWidth = v));
         section.Cells.Add(StepperCell("Height", "arrow.up.and.down.square", Ui.Indigo, settings.TeleprompterHeight, AppSettings.MinTeleprompterHeight, AppSettings.MaxTeleprompterHeight, 20, "pt", v => settings.TeleprompterHeight = v));
+        // Only where there's a recognizer to follow with (Linux has no OS speech engine).
+        if (prompter.CanListen)
+            section.Cells.Add(Switch("Follow my voice with speech-to-text", "mic.fill", Ui.Red, settings.TeleprompterFollowVoice, v => settings.TeleprompterFollowVoice = v));
         return section;
     }
 
