@@ -91,7 +91,8 @@ sealed class PeekView : Grid, ILiveView
 
     /// <summary>
     /// Null when there is nothing worth peeking at, so the notch can disappear into the camera - unless
-    /// <paramref name="preview"/>, when an empty one is shown so a size being changed in Settings can be seen.
+    /// <paramref name="preview"/>, when an empty one is shown: so a size being changed in Settings can be seen,
+    /// or on a display without a camera notch, where the black stand-in is all there is to hover.
     /// </summary>
     public static PeekView? Create(double cutoutWidth, double leftWish, double rightWish, bool locked, double height, bool preview, INowPlayingService media, CountdownService countdown, CalendarService calendar, WeatherService weather, TimeProvider time)
     {

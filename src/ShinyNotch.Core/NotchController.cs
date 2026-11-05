@@ -342,7 +342,22 @@ public sealed class NotchController
     /// The collapsed notch's height: exactly the camera's, plus whatever was asked for in Settings. With no
     /// camera notch (an external display), a menu bar's height.
     /// </summary>
-    double PeekHeight => (this.notch.HardwareNotchSize.Height is > 0 and var h ? h : 32) + this.settings.NotchExtraHeight;
+    double PeekHeight => this.Cutout.Height + this.settings.NotchExtraHeight;
+
+    /// <summary>About a MacBook camera notch's width, for a display that has none.</summary>
+    const double StandInCutoutWidth = 180;
+
+    /// <summary>
+    /// The camera cut-out the notch is built around. A display without one (an external monitor) gets a
+    /// stand-in of about a MacBook's size, drawn black, so the collapsed notch is always there to hover or
+    /// click: around a real camera the black is the hardware itself, but on a plain screen an empty notch
+    /// would be invisible and a few points wide.
+    /// </summary>
+    Size Cutout => this.notch.HardwareNotchSize is { Width: > 0, Height: > 0 } hardware
+        ? hardware
+        : new Size(StandInCutoutWidth, 32);
+
+    bool HasHardwareCutout => this.notch.HardwareNotchSize.Width > 0;
 
     string SizeKey => $"{this.settings.NotchLeftWidth}|{this.settings.NotchRightWidth}|{this.settings.NotchWidthsLocked}|{this.settings.NotchExtraHeight}";
 
@@ -578,7 +593,7 @@ public sealed class NotchController
                 break;
 
             case Mode.Hud:
-                var cutout = this.notch.HardwareNotchSize;
+                var cutout = this.Cutout;
                 var hud = new HudView(this.hudKind, cutout.Width, this.settings.NotchLeftWidth, this.settings.NotchRightWidth, this.settings.NotchWidthsLocked, this.PeekHeight, this.controls);
                 this.live = hud;
                 await this.notch.SetContentAsync(hud, this.ConfigurePeek);
@@ -596,8 +611,10 @@ public sealed class NotchController
 
     PeekView? BuildPeek()
     {
-        var cutout = this.notch.HardwareNotchSize;
-        return PeekView.Create(cutout.Width, this.settings.NotchLeftWidth, this.settings.NotchRightWidth, this.settings.NotchWidthsLocked, this.PeekHeight, this.previewingSize, this.media, this.countdown, this.calendar, this.weather, this.time);
+        var cutout = this.Cutout;
+        // An empty peek vanishes into a real camera notch; the stand-in has to stay drawn.
+        var keepEmpty = this.previewingSize || !this.HasHardwareCutout;
+        return PeekView.Create(cutout.Width, this.settings.NotchLeftWidth, this.settings.NotchRightWidth, this.settings.NotchWidthsLocked, this.PeekHeight, keepEmpty, this.media, this.countdown, this.calendar, this.weather, this.time);
     }
 
     PanelView BuildPanel()
@@ -618,7 +635,7 @@ public sealed class NotchController
             _ => new PrompterTab(this.prompter, () => this.OpenSettings?.Invoke())
         };
 
-        var cutout = this.notch.HardwareNotchSize;
+        var cutout = this.Cutout;
         var controls = new ControlsBar(this.media, this.controls, showPlay: this.tab != NotchTab.Media);
         var width = this.tab == NotchTab.Prompter ? this.prompter.Width : Ui.PanelWidth;
         return new PanelView(this.tab, this.ShownTabs, body, controls, width, cutout.Width, Math.Max(cutout.Height, 32), this.pinnedByUser, this.Open, this.TogglePin, () => this.OpenSettings?.Invoke());

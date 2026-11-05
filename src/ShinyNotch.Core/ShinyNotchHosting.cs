@@ -19,21 +19,25 @@ public static class ShinyNotchHosting
         SettingsJson.Register();
         builder
             .UseShinyControls()
-            .UseFileDrop(o => o.AllowDirectories = true)
-            // Tasks are typed into the quick entry popup, as a window of its own over other apps.
-            .UseDesktopQuickEntry()
-            .UseDesktopNotch(o =>
-            {
-                // Room for the widest and tallest teleprompter Settings allows; every other tab is 640 wide.
-                o.MaxWidth = AppSettings.MaxTeleprompterWidth + 40;
-                o.MaxHeight = 760;
-                o.MorphDuration = 260;
-                // Without a hardware notch, hang from the top of the usable area (under the menu bar or a
-                // top taskbar) instead of floating an island below it, out of the way of what's on screen.
-                // A notched screen already gets this shape.
-                o.TopMargin = 0;
-                o.Configure = v => v.Shape = NotchShape.Notch;
-            });
+            .UseShinyDesktop(cfg => cfg
+                .UseFileDrop(o => o.AllowDirectories = true)
+                // Tasks are typed into the quick entry popup, as a window of its own over other apps.
+                .UseQuickEntryWindow()
+                .ConfigureNotch(o =>
+                {
+                    // Room for the widest and tallest teleprompter Settings allows; every other tab is 640 wide.
+                    o.MaxWidth = AppSettings.MaxTeleprompterWidth + 40;
+                    o.MaxHeight = 760;
+                    o.MorphDuration = 260;
+                    // Without a hardware notch, hang from the top of the usable area (under the menu bar or a
+                    // top taskbar) instead of floating an island below it, out of the way of what's on screen.
+                    // A notched screen already gets this shape.
+                    o.TopMargin = 0;
+                    // On a Mac display without a notch, measure that from the screen's top edge so the notch
+                    // sits over the menu bar, flush with the top, the way the hardware one does.
+                    o.CoverMenuBar = true;
+                    o.Configure = v => v.Shape = NotchShape.Notch;
+                }));
 
         // Launch at login, from Shiny.Core: a login item / startup entry for the running app.
         builder.Services.AddAppStartupInstaller(o =>
