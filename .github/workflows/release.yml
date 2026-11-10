@@ -14,8 +14,9 @@ permissions:
   contents: write
 
 env:
-  # The workload set whose macos SDK (27.0) builds with Xcode 27.
-  WORKLOAD_VERSION: 10.0.402.1
+  # The workload set whose macos SDK (27.2.10000) builds with Xcode 27.2. Pinned: setup-dotnet alone takes the
+  # newest, and a new one can need a different Xcode overnight.
+  WORKLOAD_VERSION: 10.0.404
   APP_PATH: src/ShinyNotch/bin/Release/net10.0-macos/osx-arm64/ShinyNotch.app
 
 jobs:
@@ -41,11 +42,10 @@ jobs:
           echo "TAG=v$VERSION" >> "$GITHUB_ENV"
           if [ "$VERSION" != "$APP_VERSION" ]; then echo "PRERELEASE=--prerelease" >> "$GITHUB_ENV"; fi
 
-      # The workload set's macOS SDK (27.0.10742) needs Xcode 27.1 exactly: the runner defaults to 27.0, and the
-      # newest it has (a 27.2 beta) is refused too. Bump this with WORKLOAD_VERSION.
+      # The workload set's macOS SDK (27.2.10000) needs Xcode 27.2 exactly. Bump this with WORKLOAD_VERSION.
       - name: Xcode
         run: |
-          XCODE=/Applications/Xcode_27.1.app
+          XCODE=/Applications/Xcode_27.2.app
           if [ ! -d "$XCODE" ]; then ls -d /Applications/Xcode*.app; echo "No $XCODE on this runner"; exit 1; fi
           sudo xcode-select -s "$XCODE/Contents/Developer"
           xcodebuild -version
@@ -53,7 +53,9 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.4xx
-          workloads: macos, maui
+
+      - name: Workloads
+        run: dotnet workload install macos maui --version "$WORKLOAD_VERSION"
           
       - name: Import signing certificate
         env:
