@@ -112,6 +112,16 @@ public sealed class AppSettings
         set => this.Set(nameof(this.NotchExtraHeight), Math.Clamp(Math.Round(value), 0, MaxNotchExtraHeight));
     }
 
+    /// <summary>
+    /// What the closed notch shows, by <c>PeekItem</c> name. What's playing and the weather unless changed;
+    /// the system readings only when asked for, since they keep the app sampling every second.
+    /// </summary>
+    public IReadOnlyList<string> PeekItems
+    {
+        get => this.List(nameof(this.PeekItems)) ?? ["Music", "Weather"];
+        set => this.Set(nameof(this.PeekItems), value.Distinct().ToArray());
+    }
+
     /// <summary>The notch opens on a click instead of on hover. It still folds away when the pointer leaves.</summary>
     public bool ClickToOpen
     {

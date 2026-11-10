@@ -284,6 +284,9 @@ public sealed class NotchController
             }
             else if (key is nameof(AppSettings.NotchLeftWidth) or nameof(AppSettings.NotchRightWidth) or nameof(AppSettings.NotchWidthsLocked) or nameof(AppSettings.NotchExtraHeight))
                 this.PreviewSize();
+            // The panel picks the change up on closing.
+            else if (key is nameof(AppSettings.PeekItems) && this.mode == Mode.Peek)
+                _ = this.RenderAsync();
         };
 
         this.media.Start();
@@ -542,7 +545,7 @@ public sealed class NotchController
 
     string Key() => this.mode switch
     {
-        Mode.Peek => $"peek|{this.SizeKey}|{this.previewingSize}|{this.media.Current?.TrackKey}|{this.media.Current?.IsPlaying}|{this.media.Artwork?.Length}|{this.countdown.IsActive}|{this.countdown.IsPaused}|{this.calendar.StartingWithin(TimeSpan.FromMinutes(15))?.Title}|{this.weather.Selected?.Temperature:0}|{this.weather.Selected?.Code}",
+        Mode.Peek => $"peek|{this.SizeKey}|{this.previewingSize}|{String.Join(',', this.settings.PeekItems)}|{this.media.Current?.TrackKey}|{this.media.Current?.IsPlaying}|{this.media.Artwork?.Length}|{this.countdown.IsActive}|{this.countdown.IsPaused}|{this.calendar.StartingWithin(TimeSpan.FromMinutes(15))?.Title}|{this.weather.Selected?.Temperature:0}|{this.weather.Selected?.Code}",
         Mode.Hud => $"hud|{this.SizeKey}",
         // Panels are rebuilt on every structural change, and those are rare.
         _ => $"panel|{this.tab}|{Guid.NewGuid()}"
@@ -594,6 +597,8 @@ public sealed class NotchController
             case Mode.Peek:
                 var peek = this.BuildPeek();
                 this.live = peek;
+                // Readings coming or going change how often the clock ticks.
+                this.ScheduleTick();
                 await this.notch.SetContentAsync(peek, this.ConfigurePeek);
                 break;
 
@@ -619,7 +624,8 @@ public sealed class NotchController
         var cutout = this.Cutout;
         // An empty peek vanishes into a real camera notch; the stand-in has to stay drawn.
         var keepEmpty = this.previewingSize || !this.HasHardwareCutout;
-        return PeekView.Create(cutout.Width, this.settings.NotchLeftWidth, this.settings.NotchRightWidth, this.settings.NotchWidthsLocked, this.PeekHeight, keepEmpty, this.media, this.countdown, this.calendar, this.weather, this.time);
+        var items = PeekItemInfo.Shown(this.settings.PeekItems);
+        return PeekView.Create(cutout.Width, this.settings.NotchLeftWidth, this.settings.NotchRightWidth, this.settings.NotchWidthsLocked, this.PeekHeight, keepEmpty, items, this.media, this.countdown, this.calendar, this.weather, this.stats, this.time);
     }
 
     PanelView BuildPanel()
@@ -690,10 +696,12 @@ public sealed class NotchController
 
     /// <summary>
     /// Something on screen counts seconds: a running countdown (the peek and the Timer tab show it), the
-    /// player's position, the Stats tab's sampling, or the Capture tab watching for a recording. Everything else changes by the minute at most.
+    /// player's position, the Stats tab's sampling or readings in the peek, or the Capture tab watching for a
+    /// recording. Everything else changes by the minute at most.
     /// </summary>
     bool NeedsSeconds =>
         this.countdown.IsRunning ||
+        (this.mode == Mode.Peek && this.live is PeekView { ShowsReadings: true }) ||
         (this.mode == Mode.Panel && this.tab switch
         {
             NotchTab.Media => this.media.Current?.IsPlaying == true,

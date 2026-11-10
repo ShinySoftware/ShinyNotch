@@ -24,7 +24,7 @@ public static class MauiProgram
         // No speech-to-text: Linux has no OS recognizer, so the teleprompter doesn't offer to follow a voice.
 
         // Everything marked [Singleton] in this head: the Platform implementations, and a calendar store
-        // that says there's no calendar (Shiny.Calendar has none for plain net10.0).
+        // that says there's no calendar (Shiny.Calendar has none for plain net11.0).
         builder.Services.AddPlatformServices();
 
 #if DEBUG

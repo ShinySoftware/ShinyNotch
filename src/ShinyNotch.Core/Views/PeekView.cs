@@ -4,10 +4,52 @@ using ShinyNotch.Services;
 
 namespace ShinyNotch.Views;
 
+/// <summary>Something the closed notch can show, turned on or off in Settings.</summary>
+public enum PeekItem
+{
+    Music,
+    Weather,
+    Cpu,
+    Gpu,
+    Memory,
+    NetworkIn,
+    NetworkOut,
+    DiskRead,
+    DiskWrite
+}
+
+/// <summary>A closed-notch item as Settings and the notch show it.</summary>
+/// <param name="Tag">
+/// The short name a percentage goes by in the notch ("CPU 23%"). Null for a rate, which goes by its symbol.
+/// </param>
+public sealed record PeekItemInfo(PeekItem Item, string Name, string Symbol, Color Color, string? Tag = null)
+{
+    /// <summary>A system reading, sampled every second while it shows.</summary>
+    public bool IsReading => this.Item is not (PeekItem.Music or PeekItem.Weather);
+
+    /// <summary>Every item, in Settings' order - and, for the readings, the notch's.</summary>
+    public static readonly IReadOnlyList<PeekItemInfo> All =
+    [
+        new(PeekItem.Music, "What's playing", "music.note", Ui.Red),
+        new(PeekItem.Weather, "Weather", "cloud.sun.fill", Ui.Blue),
+        new(PeekItem.Cpu, "CPU load", "cpu", Ui.Teal, "CPU"),
+        new(PeekItem.Gpu, "GPU load", "cpu", Ui.Purple, "GPU"),
+        new(PeekItem.Memory, "Memory used", "memorychip", Ui.Green, "MEM"),
+        new(PeekItem.NetworkIn, "Network in", "arrow.down.circle.fill", Ui.Blue),
+        new(PeekItem.NetworkOut, "Network out", "arrow.up.circle.fill", Ui.Pink),
+        new(PeekItem.DiskRead, "Disk reads", "arrow.down.doc.fill", Ui.Orange),
+        new(PeekItem.DiskWrite, "Disk writes", "arrow.up.doc.fill", Ui.Yellow)
+    ];
+
+    /// <summary>The items turned on, from the names Settings keeps. A name no longer known is skipped.</summary>
+    public static IReadOnlySet<PeekItem> Shown(IEnumerable<string> names)
+        => names.Select(n => Enum.TryParse<PeekItem>(n, out var item) ? item : (PeekItem?)null).OfType<PeekItem>().ToHashSet();
+}
+
 /// <summary>
 /// The collapsed notch: a "wing" either side of the camera, at the camera's height. Left is what's
-/// playing - the artwork and its bars, in the artwork's colour. Right is the countdown, then a meeting
-/// that's about to start, then the weather.
+/// playing - the artwork and its bars, in the artwork's colour - then any system readings turned on in
+/// Settings. Right is the countdown, then a meeting that's about to start, then the weather.
 /// </summary>
 /// <remarks>
 /// Each wing is the width asked for in Settings or what its content needs, whichever is more - so a wing
@@ -25,26 +67,35 @@ sealed class PeekView : Grid, ILiveView
     readonly CalendarService calendar;
     readonly WeatherService weather;
     readonly TimeProvider time;
+    readonly SystemStatsService stats;
+    readonly bool showWeather;
     readonly Label? right;
+    readonly IReadOnlyList<(PeekItem Item, Label Value)> readings;
 
     const double ArtworkSize = 22;
     const double BarsWidth = 16;
     const double WingSpacing = 8;
     const double RightSpacing = 4;
     const double RightTextSize = 12;
+    const double ReadingTagSize = 9;
+    const double ReadingSymbolSize = 10;
+    const double ReadingSpacing = 3;
     /// <summary>Kept clear between a wing's content and the camera.</summary>
     const double CameraGap = 6;
     /// <summary>Between a wing's content and the notch's outer edge (the notch itself has no padding).</summary>
     public const double EdgeGap = 12;
     const double CornerRadius = 12;
 
-    PeekView(double cutoutWidth, double leftWidth, double rightWidth, double height, View? left, View? right, Label? rightText, CountdownService countdown, CalendarService calendar, WeatherService weather, TimeProvider time)
+    PeekView(double cutoutWidth, double leftWidth, double rightWidth, double height, View? left, View? right, Label? rightText, IReadOnlyList<(PeekItem, Label)> readings, bool showWeather, CountdownService countdown, CalendarService calendar, WeatherService weather, SystemStatsService stats, TimeProvider time)
     {
         this.countdown = countdown;
         this.calendar = calendar;
         this.weather = weather;
+        this.stats = stats;
         this.time = time;
+        this.showWeather = showWeather;
         this.right = rightText;
+        this.readings = readings;
 
         this.HeightRequest = height;
         var (leftInset, rightInset) = Lay(this, cutoutWidth, leftWidth, rightWidth);
@@ -89,32 +140,63 @@ sealed class PeekView : Grid, ILiveView
         return (leftInset, rightInset);
     }
 
+    /// <summary>Shows system readings, so it wants ticking every second.</summary>
+    public bool ShowsReadings => this.readings.Count > 0;
+
     /// <summary>
     /// Null when there is nothing worth peeking at, so the notch can disappear into the camera - unless
     /// <paramref name="preview"/>, when an empty one is shown: so a size being changed in Settings can be seen,
     /// or on a display without a camera notch, where the black stand-in is all there is to hover.
     /// </summary>
-    public static PeekView? Create(double cutoutWidth, double leftWish, double rightWish, bool locked, double height, bool preview, INowPlayingService media, CountdownService countdown, CalendarService calendar, WeatherService weather, TimeProvider time)
+    public static PeekView? Create(double cutoutWidth, double leftWish, double rightWish, bool locked, double height, bool preview, IReadOnlySet<PeekItem> items, INowPlayingService media, CountdownService countdown, CalendarService calendar, WeatherService weather, SystemStatsService stats, TimeProvider time)
     {
         double leftNeeds = 0, rightNeeds = 0;
 
-        View? left = null;
-        if (media.Current is { } now)
+        // Each part of the left wing with its width, which together (and the gaps) are what the wing needs.
+        var parts = new HorizontalStackLayout
         {
-            leftNeeds = EdgeGap + ArtworkSize + WingSpacing + BarsWidth + CameraGap;
-            left = new HorizontalStackLayout
-            {
-                Spacing = 8,
-                VerticalOptions = LayoutOptions.Center,
-                HorizontalOptions = LayoutOptions.Start,
-                Margin = new Thickness(EdgeGap, 0, 0, 0),
-                Children = { Ui.Artwork(media.Artwork, ArtworkSize, 6), MusicBars.Create(now.TrackKey, now.IsPlaying, media.ArtworkColor ?? Ui.Text, BarsWidth, 14) }
-            };
+            Spacing = WingSpacing,
+            VerticalOptions = LayoutOptions.Center,
+            HorizontalOptions = LayoutOptions.Start,
+            Margin = new Thickness(EdgeGap, 0, 0, 0)
+        };
+        double partsWidth = 0;
+        void Add(View part, double width)
+        {
+            partsWidth += (parts.Count > 0 ? WingSpacing : 0) + width;
+            parts.Add(part);
         }
 
+        if (items.Contains(PeekItem.Music) && media.Current is { } now)
+        {
+            Add(Ui.Artwork(media.Artwork, ArtworkSize, 6), ArtworkSize);
+            Add(MusicBars.Create(now.TrackKey, now.IsPlaying, media.ArtworkColor ?? Ui.Text, BarsWidth, 14), BarsWidth);
+        }
+
+        var readings = new List<(PeekItem, Label)>();
+        var shownReadings = PeekItemInfo.All.Where(i => i.IsReading && items.Contains(i.Item)).ToList();
+        if (shownReadings.Count > 0)
+        {
+            // Carries on from the Stats tab or the last peek when that was a moment ago; else "—" for a second.
+            stats.Begin();
+            foreach (var info in shownReadings)
+            {
+                Add(Reading(info, stats.Current, out var value, out var width), width);
+                readings.Add((info.Item, value));
+            }
+        }
+
+        View? left = null;
+        if (parts.Count > 0)
+        {
+            leftNeeds = Math.Ceiling(EdgeGap + partsWidth + CameraGap);
+            left = parts;
+        }
+
+        var showWeather = items.Contains(PeekItem.Weather);
         View? right = null;
         Label? rightText = null;
-        if (Right(countdown, calendar, weather, time) is { } r)
+        if (Right(countdown, calendar, weather, showWeather, time) is { } r)
         {
             rightNeeds = Math.Ceiling(CameraGap + RightTextSize + RightSpacing + TextWidth(r.Text) + EdgeGap);
             rightText = Ui.Label(r.Text, RightTextSize, bold: true, color: r.Color);
@@ -133,7 +215,55 @@ sealed class PeekView : Grid, ILiveView
             return null;
 
         var (leftWidth, rightWidth) = Widths(leftWish, rightWish, locked, leftNeeds, rightNeeds);
-        return new PeekView(cutoutWidth, leftWidth, rightWidth, height, left, right, rightText, countdown, calendar, weather, time);
+        return new PeekView(cutoutWidth, leftWidth, rightWidth, height, left, right, rightText, readings, showWeather, countdown, calendar, weather, stats, time);
+    }
+
+    /// <summary>
+    /// A reading: its tag ("CPU") or symbol, then the value. The value is as wide as the widest it can be,
+    /// so ticking in place (which doesn't rebuild the wing) never outgrows the room it was given.
+    /// </summary>
+    static View Reading(PeekItemInfo info, SystemStats? current, out Label value, out double width)
+    {
+        View label;
+        double labelWidth;
+        if (info.Tag is { } tag)
+        {
+            labelWidth = Math.Ceiling(Ui.Platform.TextWidth(tag, ReadingTagSize, bold: true));
+            label = Ui.Label(tag, ReadingTagSize, bold: true, color: info.Color, width: labelWidth);
+        }
+        else
+        {
+            labelWidth = Ui.SymbolBox(ReadingSymbolSize);
+            label = Ui.Symbol(info.Symbol, ReadingSymbolSize, info.Color);
+        }
+
+        var widest = info.Tag != null ? "888%" : SystemStatsService.CompactWidest;
+        var valueWidth = Math.Ceiling(Ui.Platform.TextWidth(widest, RightTextSize, bold: true));
+        value = Ui.Label(Value(info.Item, current), RightTextSize, bold: true, width: valueWidth);
+        value.HorizontalTextAlignment = TextAlignment.End;
+
+        width = labelWidth + ReadingSpacing + valueWidth;
+        return new HorizontalStackLayout { Spacing = ReadingSpacing, VerticalOptions = LayoutOptions.Center, Children = { label, value } };
+    }
+
+    static string Value(PeekItem item, SystemStats? s)
+    {
+        static string Percent(double? percent) => percent is { } p ? $"{Math.Clamp(p, 0, 100):0}%" : "—";
+
+        if (s == null)
+            return "—";
+
+        return item switch
+        {
+            PeekItem.Cpu => Percent(s.CpuPercent),
+            PeekItem.Gpu => Percent(s.GpuPercent),
+            PeekItem.Memory => Percent(s.MemoryPercent),
+            PeekItem.NetworkIn => SystemStatsService.Compact(s.NetInPerSec),
+            PeekItem.NetworkOut => SystemStatsService.Compact(s.NetOutPerSec),
+            PeekItem.DiskRead => SystemStatsService.Compact(s.DiskReadPerSec),
+            PeekItem.DiskWrite => SystemStatsService.Compact(s.DiskWritePerSec),
+            _ => ""
+        };
     }
 
     /// <summary>The wings' widths: each the wish or its content's need, whichever is more; locked, the wider for both.</summary>
@@ -154,7 +284,7 @@ sealed class PeekView : Grid, ILiveView
         return Ui.Platform.TextWidth(widest, RightTextSize, bold: true);
     }
 
-    static (string Symbol, bool Multicolor, string Text, Color Color)? Right(CountdownService countdown, CalendarService calendar, WeatherService weather, TimeProvider time)
+    static (string Symbol, bool Multicolor, string Text, Color Color)? Right(CountdownService countdown, CalendarService calendar, WeatherService weather, bool showWeather, TimeProvider time)
     {
         if (countdown.IsActive)
             return (countdown.IsPaused ? "pause.fill" : "timer", false, CountdownService.Format(countdown.Remaining), countdown.IsPaused ? Ui.Secondary : Ui.Orange);
@@ -163,7 +293,7 @@ sealed class PeekView : Grid, ILiveView
             return ("calendar", false, $"in {Math.Max(1, (int)Math.Ceiling((next.Start - time.GetLocalNow().DateTime).TotalMinutes))}m", next.Color);
 
         // Nothing more urgent: the weather where you are, the way the iPhone's island idles.
-        if (weather.Selected is { } report)
+        if (showWeather && weather.Selected is { } report)
             return (WeatherService.Symbol(report.Code, report.IsDay), true, WeatherService.Degrees(report.Temperature), Ui.Text);
 
         return null;
@@ -171,7 +301,14 @@ sealed class PeekView : Grid, ILiveView
 
     public void Tick()
     {
-        if (this.right != null && Right(this.countdown, this.calendar, this.weather, this.time) is { } r)
+        if (this.right != null && Right(this.countdown, this.calendar, this.weather, this.showWeather, this.time) is { } r)
             this.right.Text = r.Text;
+
+        if (this.readings.Count > 0)
+        {
+            var s = this.stats.Sample();
+            foreach (var (item, value) in this.readings)
+                value.Text = Value(item, s);
+        }
     }
 }

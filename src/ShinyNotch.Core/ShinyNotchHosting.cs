@@ -11,7 +11,7 @@ public static class ShinyNotchHosting
 {
     /// <summary>
     /// The notch, its window and everything shared behind it. The head registers the Platform
-    /// implementations, an <see cref="ICalendarStore"/> (Shiny.Calendar has none for plain net10.0) and
+    /// implementations, an <see cref="ICalendarStore"/> (Shiny.Calendar has none for plain net11.0) and
     /// Shiny.Audio's services, and may register an <see cref="ICaptureTab"/> and call <see cref="UseNotchMirror"/>.
     /// </summary>
     public static MauiAppBuilder UseShinyNotch(this MauiAppBuilder builder)

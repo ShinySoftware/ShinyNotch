@@ -75,6 +75,7 @@ public sealed class SettingsPage : ContentPage
             sections.Add(update);
         sections.Add(this.NotchSection(settings));
         sections[0].HeaderView = Intro(sections[0].Title);
+        sections.Add(PeekSection(settings));
         sections.Add(TabsSection(settings, notch.AvailableTabs));
         sections.Add(this.TeleprompterSection(settings, prompter));
         // Nothing to ask for where the platform can't locate: the places are the whole story.
@@ -106,7 +107,7 @@ public sealed class SettingsPage : ContentPage
 
     TableSection NotchSection(AppSettings settings)
     {
-        var section = Section("Notch", "The size of the closed notch, either side of the camera. Each side still grows to fit what it's showing: what's playing on the left; the weather, a countdown or a meeting on the right. At 0 and 0 with nothing to show, it's just the camera.");
+        var section = Section("Notch", "The size of the closed notch, either side of the camera. Each side still grows to fit what it's showing: what's playing and any system readings on the left; the weather, a countdown or a meeting on the right. At 0 and 0 with nothing to show, it's just the camera.");
 
         var sliders = new List<Slider>();
         section.Cells.Add(Switch("Same width both sides", "arrow.left.and.right", Ui.Blue, settings.NotchWidthsLocked, locked =>
@@ -147,6 +148,27 @@ public sealed class SettingsPage : ContentPage
         section.Cells.Add(Switch("Show the new song when it changes", "music.note", Ui.Red, settings.ShowTrackChanges, v => settings.ShowTrackChanges = v));
         section.Cells.Add(Switch("Show volume changes", "speaker.wave.2.fill", Ui.Pink, settings.ShowVolumeHud, v => settings.ShowVolumeHud = v));
         section.Cells.Add(Switch("Show brightness changes", "sun.max.fill", Ui.Yellow, settings.ShowBrightnessHud, v => settings.ShowBrightnessHud = v));
+        return section;
+    }
+
+    /// <summary>
+    /// A switch for everything the closed notch can show. Nothing needs the page rebuilt: the notch picks
+    /// each change up as it's made.
+    /// </summary>
+    static TableSection PeekSection(AppSettings settings)
+    {
+        var section = Section("Closed Notch", "What shows beside the camera when the notch is closed. A countdown, or a meeting about to start, shows whatever you pick here. System readings update every second while they show.");
+        foreach (var info in PeekItemInfo.All)
+        {
+            var name = info.Item.ToString();
+            section.Cells.Add(Switch(info.Name, info.Symbol, info.Color, settings.PeekItems.Contains(name), on =>
+            {
+                var items = settings.PeekItems.Where(i => i != name).ToList();
+                if (on)
+                    items.Add(name);
+                settings.PeekItems = items;
+            }));
+        }
         return section;
     }
 

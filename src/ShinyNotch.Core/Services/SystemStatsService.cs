@@ -20,12 +20,13 @@ public sealed record SystemStats(
 /// <summary>
 /// Turns the system counters into rates. It does nothing on its own: no timer, no sampling at startup. The
 /// Stats tab calls <see cref="Begin"/> when it opens and <see cref="Sample"/> once a second while it is on
-/// screen, and nothing else reads the counters, so closing the tab stops the work entirely.
+/// screen, and the closed notch does the same while it shows a reading. The two are never on screen
+/// together, and nothing else reads the counters, so with neither showing the work stops entirely.
 /// </summary>
 [Singleton]
 public sealed class SystemStatsService
 {
-    /// <summary>Re-opening the tab within this long carries on, rather than starting the readings over.</summary>
+    /// <summary>Showing the readings again within this long carries on, rather than starting them over.</summary>
     static readonly TimeSpan ResumeWindow = TimeSpan.FromSeconds(3);
 
     readonly TimeProvider time;
@@ -48,8 +49,9 @@ public sealed class SystemStatsService
     public SystemStats? Current { get; private set; }
 
     /// <summary>
-    /// The Stats tab opened. Takes a baseline for the rates — unless the tab was showing a moment ago (a
-    /// rebuild, a quick switch away and back), in which case the readings and the sparkline carry on.
+    /// The Stats tab opened, or a closed notch with readings in it was built. Takes a baseline for the rates —
+    /// unless readings were showing a moment ago (a rebuild, the closed notch opening onto the Stats tab), in
+    /// which case the readings and the sparkline carry on.
     /// </summary>
     public void Begin()
     {
@@ -121,4 +123,24 @@ public sealed class SystemStatsService
         }
         return i == 0 ? $"{bytes:0} {units[i]}" : $"{bytes:0.0} {units[i]}";
     }
+
+    /// <summary>
+    /// A rate in four characters at most, for the closed notch: "0K" to "999K", then "1.0M", "12M" and so on.
+    /// Never wider than <see cref="CompactWidest"/>, so a reading ticking in place keeps its width.
+    /// </summary>
+    public static string Compact(double bytes)
+    {
+        string[] units = ["K", "M", "G", "T"];
+        var value = bytes / 1024;
+        var i = 0;
+        while (value >= 999.5 && i < units.Length - 1)
+        {
+            value /= 1024;
+            i++;
+        }
+        return i > 0 && value < 9.95 ? $"{value:0.0}{units[i]}" : $"{value:0}{units[i]}";
+    }
+
+    /// <summary>The widest <see cref="Compact"/> can be, to measure by.</summary>
+    public const string CompactWidest = "888M";
 }

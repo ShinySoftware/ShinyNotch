@@ -45,6 +45,7 @@ static class SymbolGlyphs
         ["cloud.sun.fill"] = Cloud,
         ["tray.and.arrow.down.fill"] = Download,
         ["cpu"] = Gauge,
+        ["memorychip"] = Gauge,
         ["camera.viewfinder"] = "",
         ["calendar"] = "",
         ["calendar.badge.plus"] = "",
