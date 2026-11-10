@@ -23,9 +23,13 @@ sealed class MacLocationProvider : ILocationProvider
         this.location.AuthorizationChanged += (_, _) => this.AccessChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public LocationAccess Access => CLLocationManager.Status switch
+    /// <summary>
+    /// The instance's status: the static one is obsolete since macOS 11. A "when in use" grant counts too -
+    /// it's what <see cref="RequestAccess"/> asks for.
+    /// </summary>
+    public LocationAccess Access => this.location.AuthorizationStatus switch
     {
-        CLAuthorizationStatus.Authorized or CLAuthorizationStatus.AuthorizedAlways => LocationAccess.Granted,
+        CLAuthorizationStatus.Authorized or CLAuthorizationStatus.AuthorizedAlways or CLAuthorizationStatus.AuthorizedWhenInUse => LocationAccess.Granted,
         CLAuthorizationStatus.Denied or CLAuthorizationStatus.Restricted => LocationAccess.Denied,
         _ => LocationAccess.NotDetermined
     };

@@ -39,7 +39,7 @@ public sealed class SettingsPage : ContentPage
     /// <summary>The release the Update section was built for, so only a different one rebuilds the page.</summary>
     readonly string? shownUpdate;
 
-    public SettingsPage(AppSettings settings, CalendarService calendar, WeatherService weather, NotchController notch, IPlatformShell shell, IAppStartupInstaller startup, UpdateService updates, TeleprompterService prompter)
+    public SettingsPage(AppSettings settings, CalendarService calendar, WeatherService weather, NotchController notch, IPlatformShell shell, IAppStartupInstaller startup, UpdateService updates, TeleprompterService prompter, CalculatorService calculator)
     {
         this.updates = updates;
         this.shownUpdate = updates.Available?.Version;
@@ -78,6 +78,7 @@ public sealed class SettingsPage : ContentPage
         sections.Add(PeekSection(settings));
         sections.Add(TabsSection(settings, notch.AvailableTabs));
         sections.Add(this.TeleprompterSection(settings, prompter));
+        sections.Add(CalculatorSection(settings, calculator));
         // Nothing to ask for where the platform can't locate: the places are the whole story.
         if (!weather.IsLocationUnavailable)
             sections.Add(this.WeatherSection(settings, weather));
@@ -252,6 +253,16 @@ public sealed class SettingsPage : ContentPage
         // Only where there's a recognizer to follow with (Linux has no OS speech engine).
         if (prompter.CanListen)
             section.Cells.Add(Switch("Follow my voice with speech-to-text", "mic.fill", Ui.Red, settings.TeleprompterFollowVoice, v => settings.TeleprompterFollowVoice = v));
+        return section;
+    }
+
+    static TableSection CalculatorSection(AppSettings settings, CalculatorService calculator)
+    {
+        var section = Section("Calculator", "Clicked, not typed: the notch never takes the keyboard. Copying (the button beside the number) leaves out the thousands separators, so it pastes as a number anywhere.");
+        section.Cells.Add(Switch("Group thousands (1,234,567)", "textformat.123", Ui.Orange, settings.CalculatorGroupDigits, v => settings.CalculatorGroupDigits = v));
+        section.Cells.Add(Switch("Show the history beside the keypad", "clock.arrow.circlepath", Ui.Teal, settings.CalculatorShowTape, v => settings.CalculatorShowTape = v));
+        section.Cells.Add(Switch("Copy each answer when I press =", "doc.on.doc", Ui.Blue, settings.CalculatorCopyOnEquals, v => settings.CalculatorCopyOnEquals = v));
+        section.Cells.Add(Button("Clear the history", calculator.ClearTape));
         return section;
     }
 

@@ -64,6 +64,7 @@ public sealed class NotchController
     readonly TasksService tasks;
     readonly TaskEntry taskEntry;
     readonly ClipboardService clipboard;
+    readonly CalculatorService calculator;
     readonly bool hasMirror;
     readonly ICameraControls? cameraControls;
     readonly ICaptureTab? capture;
@@ -111,6 +112,7 @@ public sealed class NotchController
         TasksService tasks,
         TaskEntry taskEntry,
         ClipboardService clipboard,
+        CalculatorService calculator,
         IEnumerable<MirrorSupport> mirror,
         IEnumerable<ICameraControls> cameraControls,
         IEnumerable<ICaptureTab> captures,
@@ -133,6 +135,7 @@ public sealed class NotchController
         this.tasks = tasks;
         this.taskEntry = taskEntry;
         this.clipboard = clipboard;
+        this.calculator = calculator;
         this.hasMirror = mirror.Any();
         this.cameraControls = cameraControls.FirstOrDefault();
         this.capture = captures.FirstOrDefault();
@@ -256,6 +259,7 @@ public sealed class NotchController
         this.weather.Changed += (_, _) => this.Rebuild(NotchTab.Weather);
         this.tasks.Changed += (_, _) => this.Rebuild(NotchTab.Tasks);
         this.clipboard.Changed += (_, _) => this.Rebuild(NotchTab.Clipboard);
+        this.calculator.Changed += (_, _) => this.Rebuild(NotchTab.Calculator);
         // Typing a task holds the panel open behind the popup; done typing, it closes as usual.
         this.taskEntry.Closed += (_, _) => this.ScheduleClose();
         this.notes.Changed += (_, _) =>
@@ -274,6 +278,8 @@ public sealed class NotchController
         {
             if (key is nameof(AppSettings.TeleprompterScript) or nameof(AppSettings.TeleprompterFontSize) or nameof(AppSettings.TeleprompterWidth) or nameof(AppSettings.TeleprompterHeight) or nameof(AppSettings.TeleprompterFollowVoice))
                 this.Rebuild(NotchTab.Prompter);
+            else if (key is nameof(AppSettings.CalculatorGroupDigits) or nameof(AppSettings.CalculatorShowTape))
+                this.Rebuild(NotchTab.Calculator);
             // The tab strip changes. Turned off while showing it, the panel moves to Now Playing.
             else if (key is nameof(AppSettings.HiddenTabs) && this.mode == Mode.Panel)
             {
@@ -643,6 +649,7 @@ public sealed class NotchController
             NotchTab.Notes => new NotesTab(this.notes, this.tray),
             NotchTab.Tasks => new TasksTab(this.tasks, this.taskEntry.Show),
             NotchTab.Clipboard => new ClipboardTab(this.clipboard, this.time),
+            NotchTab.Calculator => new CalculatorTab(this.calculator, this.settings),
             _ => new PrompterTab(this.prompter, () => this.OpenSettings?.Invoke())
         };
 

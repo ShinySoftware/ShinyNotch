@@ -175,6 +175,34 @@ public sealed class AppSettings
         set => this.Set(nameof(this.ClipboardHistory), value ?? "", notify: false);
     }
 
+    /// <summary>The calculator's tape of finished sums, as JSON (see <see cref="CalculatorService"/>).</summary>
+    public string? CalculatorTape
+    {
+        get => this.Text(nameof(this.CalculatorTape));
+        set => this.Set(nameof(this.CalculatorTape), value ?? "", notify: false);
+    }
+
+    /// <summary>The calculator groups thousands (1,234,567) the way the region does.</summary>
+    public bool CalculatorGroupDigits
+    {
+        get => this.Bool(nameof(this.CalculatorGroupDigits), true);
+        set => this.Set(nameof(this.CalculatorGroupDigits), value);
+    }
+
+    /// <summary>The calculator's tape of recent sums shows beside the keypad.</summary>
+    public bool CalculatorShowTape
+    {
+        get => this.Bool(nameof(this.CalculatorShowTape), true);
+        set => this.Set(nameof(this.CalculatorShowTape), value);
+    }
+
+    /// <summary>Every answer goes on the clipboard as = is pressed, ready to paste.</summary>
+    public bool CalculatorCopyOnEquals
+    {
+        get => this.Bool(nameof(this.CalculatorCopyOnEquals), false);
+        set => this.Set(nameof(this.CalculatorCopyOnEquals), value);
+    }
+
     /// <summary>The microphone voice notes record from, by its device id; null is the system default.</summary>
     public string? VoiceNoteInput
     {

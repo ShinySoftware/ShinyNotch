@@ -13,6 +13,7 @@ public enum NotchTab
     Clipboard,
     Calendar,
     Timer,
+    Calculator,
     Prompter
 }
 
@@ -33,6 +34,7 @@ public sealed record NotchTabInfo(NotchTab Tab, string Symbol, string Name)
         new(NotchTab.Clipboard, "doc.on.clipboard", "Clipboard"),
         new(NotchTab.Calendar, "calendar", "Calendar"),
         new(NotchTab.Timer, "timer", "Timer"),
+        new(NotchTab.Calculator, "plus.forwardslash.minus", "Calculator"),
         new(NotchTab.Prompter, "text.alignleft", "Teleprompter")
     ];
 }

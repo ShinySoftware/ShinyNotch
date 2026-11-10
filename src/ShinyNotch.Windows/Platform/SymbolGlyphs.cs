@@ -96,6 +96,11 @@ static class SymbolGlyphs
         // Clipboard
         ["doc.on.clipboard"] = "\uE77F",
 
+        // Calculator
+        ["plus.forwardslash.minus"] = "\uE8EF",
+        ["textformat.123"] = "\uE8EF",
+        ["clock.arrow.circlepath"] = "\uE81C",
+
         // Voice notes and the mirror
         ["qrcode"] = "\uED14",
         ["arrow.up.right"] = "\uE8A7",

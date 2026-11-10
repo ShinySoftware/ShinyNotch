@@ -103,6 +103,9 @@ A ring that drains as the countdown runs, presets from 1 to 45 minutes, plus +1 
 
 <img src="docs/screenshots/timer.png" width="668" alt="Timer tab" />
 
+### Calculator
+A pocket calculator, clicked rather than typed: × and ÷ go before + and −, and it works in decimals, so 0.1 + 0.2 is 0.3. Recent sums are kept beside the keypad; click one to bring its answer back. The copy button puts the number on the clipboard without thousands separators, so it pastes anywhere. Settings can turn off digit grouping or the history, or copy every answer as you press =.
+
 ### Teleprompter
 Your script scrolls right under the camera, so you read while looking at the lens. There's play/pause, nudge, speed and text size, and the notch stays open while it runs. Edit the script in Settings, and make the teleprompter wider or taller there too.
 
@@ -119,7 +122,7 @@ Changes from the keys or Control Centre flash in the notch.
 ### And
 - **Pin** (⦿) keeps the panel open.
 - **Open at login** is turned on the first time the app runs, and after that it's yours to change in Settings. If macOS asks you to approve it in System Settings ▸ General ▸ Login Items, Settings says so and opens that page. If you turn it off there later, Settings shows that too, rather than a switch that's lying.
-- **Settings** (⚙ in the panel) holds the notch size, which tabs show, the teleprompter script, weather places and units, the HUD toggles, permissions and open at login. Turn off the tabs you don't use and the rest spread out across the strip.
+- **Settings** (⚙ in the panel) holds the notch size, which tabs show, the teleprompter script, calculator options, weather places and units, the HUD toggles, permissions and open at login. Turn off the tabs you don't use and the rest spread out across the strip.
 - It's an agent app (`LSUIElement`) with no Dock or menu-bar icon. To get back to Settings when the notch isn't handy, open Shiny Notch again (from Finder, Spotlight or Launchpad) while it's running. Quit it from Settings.
 
 ## Build and run
@@ -136,7 +139,7 @@ dotnet build -c Release
 open src/ShinyNotch/bin/Release/net10.0-macos/osx-arm64/ShinyNotch.app
 ```
 
-Debug builds accept `--open <Media|Weather|Tray|Stats|Capture|Mirror|Notes|Tasks|Clipboard|Calendar|Timer|Prompter>` to start with the panel pinned open on a tab, which makes the UI drivable without a mouse:
+Debug builds accept `--open <Media|Weather|Tray|Stats|Capture|Mirror|Notes|Tasks|Clipboard|Calendar|Timer|Calculator|Prompter>` to start with the panel pinned open on a tab, which makes the UI drivable without a mouse:
 
 ```bash
 src/ShinyNotch/bin/Debug/net10.0-macos/osx-arm64/ShinyNotch.app/Contents/MacOS/ShinyNotch --open Weather
