@@ -35,6 +35,7 @@ static class SymbolNames
         ["chevron.right"] = ["pan-end-symbolic", "go-next-symbolic"],
         ["cpu"] = ["utilities-system-monitor-symbolic", "computer-symbolic"],
         ["memorychip"] = ["utilities-system-monitor-symbolic", "computer-symbolic"],
+        ["list.bullet.rectangle"] = ["view-list-symbolic", "utilities-system-monitor-symbolic"],
         ["cursorarrow.click"] = ["input-mouse-symbolic"],
         ["doc.on.clipboard"] = ["edit-paste-symbolic", "edit-copy-symbolic"],
         ["plus.forwardslash.minus"] = ["accessories-calculator-symbolic", "applications-science-symbolic"],

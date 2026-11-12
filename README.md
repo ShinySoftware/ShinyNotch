@@ -76,6 +76,9 @@ CPU, GPU and memory as rings, a chart of the last 24 seconds of CPU, and network
 
 <img src="docs/screenshots/stats.png" width="668" alt="System stats tab" />
 
+### Processes
+The ten busiest of your own processes, sorted by name, CPU, memory, disk or network (click a heading to sort by it, and again to reverse it), updated once a second while the tab is open. The cross at the end of a row force quits it: the first click asks, the second kills it.
+
 ### Capture
 One-click shortcuts into [macshot](https://macshot.io), the open-source screenshot app: area, screen, scrolling, text (OCR), recording, and its latest captures to open in its editor. The notch folds away before each capture so it isn't in the shot. The tab only appears when macshot is installed.
 
@@ -216,6 +219,7 @@ rsvg-convert -w 1024 -h 1024 src/ShinyNotch/Resources/AppIcon/appicon.svg -o src
 - Brightness is the built-in display only; most external monitors don't report it.
 - The mirror can only change the camera's own brightness on a USB (UVC) webcam. A MacBook's built-in camera has no setting an app can change, so there the slider brightens the mirror alone.
 - Open at login registers the app wherever it is when you switch it on. Move it to `/Applications` first, or the login item points at the old location.
+- The Processes tab lists only your own processes: other users' and the system's can't be read (or quit) without elevation. Network per process is macOS only (through `nettop`); Windows and Linux keep no per-process network counters an app can read. On Windows the disk column is all of a process's I/O, as Task Manager counts it.
 - Files can't be dragged *out* of the tray yet (the AppKit head has no drag source). Use Copy, then paste in Finder.
 
 ## Built on Shiny open source

@@ -55,6 +55,7 @@ public sealed class NotchController
     readonly INowPlayingService media;
     readonly SystemControlsService controls;
     readonly SystemStatsService stats;
+    readonly ProcessListService processes;
     readonly CalendarService calendar;
     readonly CountdownService countdown;
     readonly FileTrayService tray;
@@ -103,6 +104,7 @@ public sealed class NotchController
         INowPlayingService media,
         SystemControlsService controls,
         SystemStatsService stats,
+        ProcessListService processes,
         CalendarService calendar,
         CountdownService countdown,
         FileTrayService tray,
@@ -126,6 +128,7 @@ public sealed class NotchController
         this.media = media;
         this.controls = controls;
         this.stats = stats;
+        this.processes = processes;
         this.calendar = calendar;
         this.countdown = countdown;
         this.tray = tray;
@@ -642,6 +645,7 @@ public sealed class NotchController
             NotchTab.Weather => new WeatherTab(this.weather, () => this.OpenSettings?.Invoke()),
             NotchTab.Tray => this.BuildTray(),
             NotchTab.Stats => new StatsTab(this.stats),
+            NotchTab.Processes => new ProcessesTab(this.processes),
             NotchTab.Calendar => new CalendarTab(this.calendar, this.time, this.shell, () => _ = this.RenderAsync()),
             NotchTab.Timer => new TimerTab(this.countdown),
             NotchTab.Capture when this.capture != null => this.capture.Build(this.FoldAway),
@@ -703,7 +707,7 @@ public sealed class NotchController
 
     /// <summary>
     /// Something on screen counts seconds: a running countdown (the peek and the Timer tab show it), the
-    /// player's position, the Stats tab's sampling or readings in the peek, or the Capture tab watching for a
+    /// player's position, the Stats and Processes tabs' sampling or readings in the peek, or the Capture tab watching for a
     /// recording. Everything else changes by the minute at most.
     /// </summary>
     bool NeedsSeconds =>
@@ -713,6 +717,7 @@ public sealed class NotchController
         {
             NotchTab.Media => this.media.Current?.IsPlaying == true,
             NotchTab.Stats => true,
+            NotchTab.Processes => true,
             // Watching for the capture tool's state (a recording starting or ending).
             NotchTab.Capture => true,
             NotchTab.Notes => this.notes.IsRecording,

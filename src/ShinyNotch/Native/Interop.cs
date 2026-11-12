@@ -1,6 +1,8 @@
 using System.Runtime.InteropServices;
+using System.Text;
 using Foundation;
 using ObjCRuntime;
+using ShinyNotch.Platform;
 
 namespace ShinyNotch.Native;
 
@@ -440,5 +442,70 @@ static unsafe class SystemCounters
             freeifaddrs(list);
         }
         return (rx, tx);
+    }
+}
+
+/// <summary>libproc: every pid, and each one's resource usage. Only the user's own processes can be read.</summary>
+static unsafe class ProcessTable
+{
+    const string LibSystem = "/usr/lib/libSystem.dylib";
+    const int RusageInfoV2 = 2;
+    const int RusageInfoV2Size = 160;
+    const int NameSize = 64;
+
+    [DllImport(LibSystem)]
+    static extern int proc_listallpids(int* buffer, int bufferSize);
+
+    [DllImport(LibSystem)]
+    static extern int proc_pid_rusage(int pid, int flavor, byte* buffer);
+
+    [DllImport(LibSystem)]
+    static extern int proc_name(int pid, byte* buffer, uint size);
+
+    [DllImport(LibSystem)]
+    static extern int mach_timebase_info(out MachTimebase info);
+
+    struct MachTimebase
+    {
+        public uint Numer;
+        public uint Denom;
+    }
+
+    // The usage's CPU times are in Mach time units, which on Apple silicon aren't nanoseconds.
+    static readonly MachTimebase Timebase = mach_timebase_info(out var t) == 0 && t.Denom != 0 ? t : new MachTimebase { Numer = 1, Denom = 1 };
+
+    public static List<ProcessReading> Read()
+    {
+        var capacity = proc_listallpids(null, 0) + 64;
+        var pids = new int[Math.Max(capacity, 64)];
+        int count;
+        fixed (int* p = pids)
+            count = proc_listallpids(p, pids.Length * sizeof(int));
+
+        var list = new List<ProcessReading>(Math.Max(count, 0));
+        var usage = stackalloc byte[RusageInfoV2Size];
+        var name = stackalloc byte[NameSize];
+        for (var i = 0; i < count; i++)
+        {
+            var pid = pids[i];
+            if (pid <= 0 || proc_pid_rusage(pid, RusageInfoV2, usage) != 0)
+                continue;
+
+            // struct rusage_info_v2: uuid[16], then u_int64_t user_time@16, system_time@24, phys_footprint@72,
+            // proc_start_abstime@80, diskio_bytesread@144, diskio_byteswritten@152.
+            var times = *(ulong*)(usage + 16) + *(ulong*)(usage + 24);
+            var nanoseconds = (UInt128)times * Timebase.Numer / Timebase.Denom;
+            var length = proc_name(pid, name, NameSize);
+            list.Add(new ProcessReading(
+                pid,
+                *(ulong*)(usage + 80),
+                length > 0 ? Encoding.UTF8.GetString(name, length) : $"pid {pid}",
+                TimeSpan.FromTicks((long)(nanoseconds / 100)),
+                *(ulong*)(usage + 72),
+                *(ulong*)(usage + 144),
+                *(ulong*)(usage + 152)
+            ));
+        }
+        return list;
     }
 }

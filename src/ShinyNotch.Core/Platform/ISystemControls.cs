@@ -53,3 +53,20 @@ public interface ISystemCounters
     /// <summary>Bytes received and sent over every interface but loopback since boot.</summary>
     (ulong In, ulong Out) NetworkBytes();
 }
+
+/// <summary>One process's running totals, as the platform reads them. The service turns them into rates.</summary>
+/// <param name="Started">When it started, in any unit, so a pid handed out again reads as a new process.</param>
+/// <param name="Memory">Its footprint in bytes, the way the platform's own monitor counts it.</param>
+public readonly record struct ProcessReading(int Pid, ulong Started, string Name, TimeSpan CpuTime, ulong Memory, ulong DiskRead, ulong DiskWritten);
+
+/// <summary>The user's own processes behind the Processes tab: the ones it can read, and so force quit.</summary>
+public interface IProcessCounters
+{
+    IReadOnlyList<ProcessReading> Processes();
+
+    /// <summary>Whether <see cref="NetworkBytes"/> reports anything. Without it the tab leaves the column out.</summary>
+    bool HasNetwork { get; }
+
+    /// <summary>Bytes received and sent by pid, for processes with sockets open.</summary>
+    IReadOnlyDictionary<int, (ulong In, ulong Out)> NetworkBytes();
+}

@@ -46,6 +46,7 @@ static class SymbolGlyphs
         ["tray.and.arrow.down.fill"] = Download,
         ["cpu"] = Gauge,
         ["memorychip"] = Gauge,
+        ["list.bullet.rectangle"] = "\uE8FD",
         ["camera.viewfinder"] = "",
         ["calendar"] = "",
         ["calendar.badge.plus"] = "",
