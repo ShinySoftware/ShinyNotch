@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Shiny Notch
+GenericName=Notch Panel
+Comment=A live panel at the top of the screen: now playing, weather, timers, notes and more
+Exec=/usr/bin/shinynotch
+Icon=net.shiny.notch
+Terminal=false
+Categories=Utility;
+Keywords=notch;media;weather;timer;teleprompter;clipboard;

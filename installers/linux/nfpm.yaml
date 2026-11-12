@@ -1,0 +1,78 @@
+# The .deb and .rpm for the GTK4 head. Run from the repository root after publishing, with
+# envsubst filling in VERSION, ARCH (amd64 or arm64) and PUBLISH_DIR - see the release workflow.
+#
+# The app is self-contained, so .NET itself is in PUBLISH_DIR. What the package depends on is what
+# it cannot carry, by the sonames the published assemblies load: GTK 4 (libgtk-4.so.1, which brings
+# cairo, pango and glib), X11 for placing the notch window, PulseAudio's client libraries with ALSA
+# as the fallback (Shiny.Audio.Linux, for voice notes), and ICU/OpenSSL for .NET. No WebKitGTK, tray
+# or libnotify: nothing here opens a WebView, a tray icon or a notification, so those never load.
+#
+# Recommends are the tools and services the head shells out to or asks over D-Bus, each optional:
+# pactl for the volume slider, xdg-open for opening files, canberra-gtk-play for the timer's sound,
+# GeoClue for the weather's location. MPRIS and logind need no package.
+name: shinynotch
+version: ${VERSION}
+arch: ${ARCH}
+platform: linux
+section: utils
+priority: optional
+maintainer: ShinySoft Technologies
+vendor: ShinySoft Technologies
+homepage: https://github.com/ShinySoftware/ShinyNotch
+license: Proprietary
+description: |
+  A live panel at the top of the screen: now playing, weather, timers, a teleprompter, notes,
+  tasks, a file tray and more, opened by hovering the top centre of the display.
+
+contents:
+  - src: ${PUBLISH_DIR}
+    dst: /opt/shinynotch
+    type: tree
+
+  - src: /opt/shinynotch/ShinyNotch.Linux
+    dst: /usr/bin/shinynotch
+    type: symlink
+
+  # Named for the GTK application id (net.shiny.notch), so the desktop matches the running app to it.
+  - src: installers/linux/net.shiny.notch.desktop
+    dst: /usr/share/applications/net.shiny.notch.desktop
+
+  - src: src/ShinyNotch/Resources/AppIcon/appicon.svg
+    dst: /usr/share/icons/hicolor/scalable/apps/net.shiny.notch.svg
+
+scripts:
+  postinstall: installers/linux/after-change.sh
+  postremove: installers/linux/after-change.sh
+
+overrides:
+  deb:
+    # Alternatives cover the t64 renames (Ubuntu 24.04+) and each ICU a supported release ships.
+    depends:
+      - libgtk-4-1
+      - libx11-6
+      - libpulse0
+      - libasound2t64 | libasound2
+      - libssl3t64 | libssl3
+      - libicu78 | libicu77 | libicu76 | libicu74 | libicu72
+      - libstdc++6
+      - ca-certificates
+    recommends:
+      - pulseaudio-utils
+      - xdg-utils
+      - gnome-session-canberra
+      - geoclue-2.0
+  rpm:
+    depends:
+      - gtk4
+      - libX11
+      - pulseaudio-libs
+      - alsa-lib
+      - openssl-libs
+      - libicu
+      - libstdc++
+      - ca-certificates
+    recommends:
+      - pulseaudio-utils
+      - xdg-utils
+      - libcanberra-gtk3
+      - geoclue2

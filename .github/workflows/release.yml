@@ -1,6 +1,11 @@
 name: Release
 
-# Push a tag like v1.2.0 to build, sign, notarize and publish a GitHub release.
+# Push a tag like v1.2.0 to build and publish a GitHub release: the macOS app (signed and notarized), a Windows
+# installer and .deb/.rpm packages for Linux, for x64 and arm64 where the platform has both. Each platform builds
+# on its own runner; the last job checksums everything and publishes it as one release.
+#
+# The macOS asset's name, ShinyNotch-<version>.zip, is what installed copies look for to update themselves
+# (MacAppUpdater.AssetName): never rename it. Windows and Linux have no updater, so theirs are free.
 on:
   push:
     tags: [ 'v*' ]
@@ -15,17 +20,25 @@ permissions:
 
 env:
   # The workload set whose macos SDK (27.2.10000) builds with Xcode 27.2. Pinned: setup-dotnet alone takes the
-  # newest, and a new one can need a different Xcode overnight.
+  # newest, and a new one can need a different Xcode overnight. Windows installs maui-windows from the same set.
   WORKLOAD_VERSION: 10.0.404
+  DOTNET_VERSION: 10.0.4xx
+  WINDOWS_PROJECT: src/ShinyNotch.Windows/ShinyNotch.Windows.csproj
+  LINUX_PROJECT: src/ShinyNotch.Linux/ShinyNotch.Linux.csproj
+  NFPM_VERSION: 2.48.0
   APP_PATH: src/ShinyNotch/bin/Release/net10.0-macos/osx-arm64/ShinyNotch.app
 
 jobs:
-  release:
-    runs-on: xcode-27
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      app_version: ${{ steps.version.outputs.app_version }}
+      tag: ${{ steps.version.outputs.tag }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
-      - uses: actions/checkout@v7
-
       - name: Version
+        id: version
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             VERSION="${{ inputs.version }}"
@@ -37,10 +50,19 @@ jobs:
           if ! [[ "$APP_VERSION" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]]; then
             echo "Tag version '$VERSION' must look like 1.2.3 or 1.2.3-suffix"; exit 1
           fi
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
-          echo "TAG=v$VERSION" >> "$GITHUB_ENV"
-          if [ "$VERSION" != "$APP_VERSION" ]; then echo "PRERELEASE=--prerelease" >> "$GITHUB_ENV"; fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "app_version=$APP_VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          if [ "$VERSION" != "$APP_VERSION" ]; then echo "prerelease=--prerelease" >> "$GITHUB_OUTPUT"; fi
+
+  macos:
+    needs: version
+    runs-on: xcode-27
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      APP_VERSION: ${{ needs.version.outputs.app_version }}
+    steps:
+      - uses: actions/checkout@v7
 
       # The workload set's macOS SDK (27.2.10000) needs Xcode 27.2 exactly. Bump this with WORKLOAD_VERSION.
       - name: Xcode
@@ -52,11 +74,11 @@ jobs:
 
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 10.0.4xx
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Workloads
         run: dotnet workload install macos maui --version "$WORKLOAD_VERSION"
-          
+
       - name: Import signing certificate
         env:
           CERT_P12_BASE64: ${{ secrets.APPLE_MACOS_DIRECT_CERTIFICATE_P12 }}
@@ -119,21 +141,160 @@ jobs:
           xcrun stapler staple "$APP_PATH"
           spctl --assess --type execute --verbose=2 "$APP_PATH"
 
+      # Exactly this name: installed copies find their update by it (MacAppUpdater.AssetName).
       - name: Package
         run: |
           mkdir -p artifacts
           ditto -c -k --keepParent "$APP_PATH" "artifacts/ShinyNotch-$VERSION.zip"
 
-      - name: Publish release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: >
-          gh release create "$TAG" "artifacts/ShinyNotch-$VERSION.zip"
-          --title "Shiny Notch $VERSION"
-          --generate-notes
-          --target "$GITHUB_SHA"
-          $PRERELEASE
+      - uses: actions/upload-artifact@v7
+        with:
+          name: macos
+          path: artifacts/*
+          if-no-files-found: error
 
       - name: Clean up keychain
         if: always()
         run: security delete-keychain "$RUNNER_TEMP/signing.keychain-db" || true
+
+  windows:
+    needs: version
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      APP_VERSION: ${{ needs.version.outputs.app_version }}
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Workloads
+        run: dotnet workload install maui-windows --version "$env:WORKLOAD_VERSION"
+
+      # Self-contained - .NET and the Windows App SDK both - so nobody has to install a runtime first. Unsigned for
+      # now: SmartScreen warns about an unknown publisher until there is a certificate to sign with. Stamped like
+      # the Mac: the numbers where Windows wants numbers, the whole tag as the informational version.
+      - name: Build
+        run: |
+          foreach ($arch in 'x64', 'arm64') {
+            dotnet publish "$env:WINDOWS_PROJECT" -c Release -f net10.0-windows10.0.19041.0 -r "win-$arch" `
+              --self-contained `
+              -p:WindowsAppSDKSelfContained=true `
+              -p:Version="$env:APP_VERSION" `
+              -p:ApplicationDisplayVersion="$env:APP_VERSION" `
+              -p:ApplicationVersion="${{ github.run_number }}" `
+              -p:InformationalVersion="$env:VERSION" `
+              -o "publish/win-$arch"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+      - name: Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Package
+        run: |
+          $iscc = Get-ChildItem 'C:\Program Files*\Inno Setup*\ISCC.exe' | Select-Object -First 1
+          if (-not $iscc) { throw 'ISCC.exe was not found after installing Inno Setup' }
+          New-Item -ItemType Directory -Force artifacts | Out-Null
+          foreach ($arch in 'x64', 'arm64') {
+            & $iscc.FullName "/DAppVersion=$env:VERSION" "/DFileVersion=$env:APP_VERSION" "/DArch=$arch" `
+              "/DSourceDir=$PWD\publish\win-$arch" "/DOutputDir=$PWD\artifacts" installers\windows\ShinyNotch.iss
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows
+          path: artifacts/*
+          if-no-files-found: error
+
+  linux:
+    needs: version
+    runs-on: ubuntu-24.04
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      APP_VERSION: ${{ needs.version.outputs.app_version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      # No workload: the Linux head and Core are plain net10.0 projects on NuGet packages, as maui-labs' template
+      # is (which is why Core doesn't set UseMaui). Both architectures from one runner - the app is managed code
+      # over GTK, which it loads from the system at run time, so an arm64 publish only needs the arm64 runtime pack.
+      - name: Build
+        run: |
+          for arch in x64 arm64; do
+            dotnet publish "$LINUX_PROJECT" -c Release -r "linux-$arch" --self-contained \
+              -p:Version="$APP_VERSION" \
+              -p:InformationalVersion="$VERSION" \
+              -o "publish/linux-$arch"
+          done
+
+      - name: nfpm
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd "$RUNNER_TEMP"
+          gh release download "v$NFPM_VERSION" -R goreleaser/nfpm -p "nfpm_${NFPM_VERSION}_Linux_x86_64.tar.gz" -p checksums.txt
+          grep " nfpm_${NFPM_VERSION}_Linux_x86_64.tar.gz\$" checksums.txt | sha256sum -c
+          tar xzf "nfpm_${NFPM_VERSION}_Linux_x86_64.tar.gz" nfpm
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      # nfpm takes Debian's architecture names and maps them to x86_64/aarch64 for the .rpm.
+      - name: Package
+        run: |
+          mkdir -p artifacts
+          for arch in x64 arm64; do
+            if [ "$arch" = x64 ]; then ARCH=amd64; else ARCH=arm64; fi
+            VERSION="$VERSION" ARCH="$ARCH" PUBLISH_DIR="publish/linux-$arch" \
+              envsubst < installers/linux/nfpm.yaml > "$RUNNER_TEMP/nfpm-$arch.yaml"
+            for format in deb rpm; do
+              nfpm package -f "$RUNNER_TEMP/nfpm-$arch.yaml" -p "$format" -t "artifacts/ShinyNotch-$VERSION-linux-$arch.$format"
+            done
+          done
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: linux
+          path: artifacts/*
+          if-no-files-found: error
+
+  release:
+    needs: [ version, macos, windows, linux ]
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      TAG: ${{ needs.version.outputs.tag }}
+      PRERELEASE: ${{ needs.version.outputs.prerelease }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      # For people checking what they downloaded - for the unsigned Windows installer and the Linux packages it is
+      # the only check there is. The Mac updater ignores it: it checks the bundle's signature and team instead.
+      - name: Checksums
+        working-directory: artifacts
+        run: sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+
+      # One release with everything in it, created only once every platform has built: the Mac updater offers a
+      # release as soon as its zip is there, so a half-built release must never be published.
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "$TAG" artifacts/*
+          --repo "${{ github.repository }}"
+          --title "Shiny Notch $VERSION"
+          --generate-notes
+          --target "$GITHUB_SHA"
+          $PRERELEASE

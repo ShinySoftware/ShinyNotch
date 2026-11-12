@@ -1,13 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <!-- Everything the notch is that isn't tied to an OS: the views, the controller, Settings and the
          services on top of the Platform interfaces. Plain net10.0, so the macOS, Windows and GTK heads all
-         take it; each head supplies the Platform implementations. -->
+         take it; each head supplies the Platform implementations.
+
+         No UseMaui, as in maui-labs' template: on plain net10.0 it only sends the SDK looking for a MAUI
+         workload, and on Linux (where the release builds the GTK head) the one it asks for is maui-tizen.
+         The Microsoft.Maui.Controls package brings the MAUI global usings without it, and there's no XAML
+         or resources here for the workload to process. -->
     <PropertyGroup>
         <ShinyDIExtensionMethodName>AddShinyNotchServices</ShinyDIExtensionMethodName>
         <ShinyDIExtensionNamespace>ShinyNotch</ShinyDIExtensionNamespace>
         <TargetFramework>net10.0</TargetFramework>
-        <UseMaui>true</UseMaui>
-        <SingleProject>true</SingleProject>
         <IsPackable>false</IsPackable>
         <RootNamespace>ShinyNotch</RootNamespace>
     </PropertyGroup>

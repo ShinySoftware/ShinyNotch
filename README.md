@@ -8,7 +8,7 @@ A macOS app that turns the MacBook camera notch into a live panel. It's built wi
 
 Hover the notch to open it, and move away to let it fold back into the camera. Apple silicon only.
 
-The notch itself is shared code (`ShinyNotch.Core`) over a small set of platform interfaces. The macOS app is the one that ships; Windows and Linux heads build from the same code and are still being tested.
+The notch itself is shared code (`ShinyNotch.Core`) over a small set of platform interfaces. The macOS app is the main one; Windows and Linux heads build from the same code, ship with each release, and are still being tested.
 
 <p align="center">
   <a href="https://shinysoft.biz">
@@ -32,7 +32,15 @@ The notch itself is shared code (`ShinyNotch.Core`) over a small set of platform
 
 ## Download
 
-Signed and notarized builds are on the [Releases](https://github.com/ShinySoftware/ShinyNotch/releases) page. These are the only official builds. If you got Shiny Notch from anywhere else, it isn't ours.
+Builds are on the [Releases](https://github.com/ShinySoftware/ShinyNotch/releases) page. These are the only official builds. If you got Shiny Notch from anywhere else, it isn't ours.
+
+| Platform | Download | |
+|---|---|---|
+| macOS 14+, Apple silicon | `ShinyNotch-<version>.zip` | Signed and notarized. Updates itself when a new release is out. |
+| Windows 10/11, x64 or Arm64 | `ShinyNotch-<version>-windows-<arch>-setup.exe` | Installs for the current user, no administrator needed. Not code-signed yet, so SmartScreen warns about an unknown publisher. |
+| Linux, x64 or arm64 | `ShinyNotch-<version>-linux-<arch>.deb` / `.rpm` | Needs GTK 4. |
+
+`SHA256SUMS.txt` in each release has the checksum of every download. Windows and Linux builds don't update themselves yet: install the new release over the old one.
 
 <p align="center">
   <img src="docs/screenshots/peek.png" width="388" alt="The collapsed notch: album art and its bars left of the camera, the weather right of it" />
